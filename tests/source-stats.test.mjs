@@ -5,8 +5,8 @@ import {persistCSV,persistSourceFacts} from '../server/source-stats.mjs';
 import {synchronizeClientStats} from '../server/stats-sync.mjs';
 import {normalizeProviderSnapshot,storedSourceFacts,sourceView} from '../src/source-stats.mjs';
 import {sourceTotals} from '../src/stats-import.mjs';
-import statsRoute from '../api/stats.js';
-import backgroundRoute from '../api/stats-background.js';
+import statsRoute from '../routes/stats.js';
+import backgroundRoute from '../routes/stats-background.js';
 const client={id:'11111111-1111-4111-8111-111111111111',offer:'Expansion 1:1',meta_ad_account_id:'account-A',ghl_location_id:null};
 const snapshot=(spend=0)=>({provider:'meta',verifiedAt:'2026-10-23T00:00:00Z',account:{id:'account-A',currency:'CAD',timezone:'America/Toronto'},from:'2026-09-23',to:'2026-10-22',days:[{day:'2026-10-21',spend,impressions:100,clicks:5,actions:[{type:'lead',count:2},{type:'offsite_conversion.fb_pixel_lead',count:90}]}]});
 function fakeDB({admin=true,allowed=['11111111-1111-4111-8111-111111111111'],rows=[]}={}){

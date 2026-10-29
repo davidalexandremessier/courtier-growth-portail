@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {probeMetaReadAccess} from '../server/meta-access-diagnostic.mjs';
 import {metaDiagnosticHTML,metaLeadCapabilityHTML} from '../src/meta-diagnostic-view.mjs';
 import {encryptCredential} from '../server/oauth.mjs';
-import handler from '../api/results.js';
+import handler from '../routes/results.js';
 
 const cid='11111111-1111-4111-8111-111111111111';
 const graphError=(code,subcode)=>new Response(JSON.stringify({error:{code,error_subcode:subcode,message:'Token TEST-SECRET belongs to person@example.invalid',fbtrace_id:'TRACE_123456'}}),{status:400,headers:{'content-type':'application/json'}});
