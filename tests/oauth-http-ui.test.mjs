@@ -19,5 +19,5 @@ test('Wispr catalogue route needs confirmed OAuth and never imports meeting cont
  const ready=await agencyHandler({refreshAdminOAuth:async()=> 'synthetic',discoverWisprTools:async x=>{assert.equal(x.actor.admin,true);assert.equal(x.confirmed,true);return {tools:[{name:'synthetic-tool'}],importReady:false}}});
  r=response();await ready(req,r);assert.equal(r.statusCode,200);assert.equal(r.body.importReady,false);assert.equal(r.body.tools.length,1);assert.equal(JSON.stringify(r.body).includes('accessToken'),false);
 });
-import dispatch from '../api/oauth.js';
+import dispatch from '../routes/oauth.js';
 test('fonction OAuth unique : métadonnées Wispr servies par réécriture',async()=>{const prev=process.env.APP_URL;process.env.APP_URL='https://portail.example.test/';let out;const res={setHeader(){},status(c){this.code=c;return this},json(b){out=b;return this},end(){}};await dispatch({method:'GET',url:'/api/oauth?route=wispr-metadata',headers:{}},res);assert.equal(res.code,200);assert.equal(out.client_id,'https://portail.example.test/api/wispr-client-metadata');await dispatch({method:'GET',url:'/api/wispr-client-metadata',headers:{}},res);assert.equal(res.code,200);process.env.APP_URL=prev});

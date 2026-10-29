@@ -1,5 +1,7 @@
 import {build} from 'esbuild';
 import fs from 'node:fs/promises';
+import {assertServerlessBudget} from './serverless-budget.mjs';
+await assertServerlessBudget();
 await fs.rm('dist',{recursive:true,force:true});
 await fs.mkdir('dist',{recursive:true});
 await fs.cp('public/assets','dist/assets',{recursive:true});

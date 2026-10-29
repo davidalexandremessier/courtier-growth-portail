@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {oauthStatus,oauthConfig,startFlow,readFlow,cookieHeader,encryptCredential,unseal} from '../server/oauth.mjs';
-import oauthRoute from '../api/oauth.js';
+import oauthRoute from '../routes/oauth.js';
 
 test('OAuth synthétique : deux fournisseurs disponibles, callbacks corrects et state borné',()=>{
  const fake={APP_URL:'https://portail.courtiergrowth.com',GHL_OAUTH_CLIENT_ID:'synthetic-client',GHL_OAUTH_CLIENT_SECRET:'synthetic-only',GHL_OAUTH_APP_ID:'synthetic-app',GHL_OAUTH_VERSION_ID:'synthetic-version',META_OAUTH_CLIENT_ID:'synthetic-meta',META_OAUTH_CLIENT_SECRET:'synthetic-only',META_OAUTH_CONFIG_ID:'synthetic-config',OAUTH_ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64'),OAUTH_STORAGE_READY:'true'};

@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {inspectLeadPermissions,inspectClientLeadPermissions,readBoundInstantLeads} from '../server/meta-leads.mjs';
-import {encryptCredential} from '../server/oauth.mjs';import {mergeInstantLeadFixtures} from '../src/meta-lead-contract.mjs';import {pageAllowed} from '../src/entitlements.mjs';import handler from '../api/results.js';
+import {encryptCredential} from '../server/oauth.mjs';import {mergeInstantLeadFixtures} from '../src/meta-lead-contract.mjs';import {pageAllowed} from '../src/entitlements.mjs';import handler from '../routes/results.js';
 const cid='11111111-1111-4111-8111-111111111111',binding={approved:true,client_id:cid,page_id:'10',form_ids:['11'],version:1},from='2026-10-01T00:00:00Z',to='2026-10-05T23:59:59Z';
 const permission=granted=>({data:[{permission:'ads_read',status:'granted'},...(granted?[{permission:'leads_retrieval',status:'granted'}]:[])]});
 const lead=id=>({id,form_id:'11',created_time:'2026-10-02T10:00:00Z',ad_id:'123',field_data:[{name:'email',values:['TEST@example.invalid']},{name:'custom_project',values:['Achat','Vente']},{name:'free',values:['<script>EXEMPLE FICTIF</script>']}],custom_disclaimer_responses:[{checkbox_key:'TEST',is_checked:false}]});
