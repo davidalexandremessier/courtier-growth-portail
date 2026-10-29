@@ -4,7 +4,7 @@ import {offerDescriptions,offerKey} from '../entitlements.mjs';
 import {salesFields,metaFields,crmFields,fromRow,toRow,recentWeeks,torontoToday,shiftDay,parseCount,validate,salesKpis,metaKpis,crmKpis,kpis,reading,teamWeek,sumWeeks,isClientOwner,openTasks,triage} from './metrics.mjs';
 
 const frag=new URLSearchParams(location.hash.slice(1)),ACT={token:frag.get('invite')||frag.get('recovery')||'',type:frag.has('invite')?'invite':'recovery',flow:/type=(invite|recovery)/.test(location.hash)};const QS=new URLSearchParams(location.search),OAUTH={pending:QS.get('oauth_pending'),error:QS.get('oauth_error'),agency:QS.get('agency_oauth'),agencyError:QS.get('agency_error')};if(ACT.token||ACT.flow||OAUTH.pending||OAUTH.error||OAUTH.agency||OAUTH.agencyError)history.replaceState(null,'',location.pathname);
-const OFFERS=[['Campagne 97 $','Installation Meta 97 $'],['Groupe','Système L.I.S.T. · Groupe'],['1:1','Système L.I.S.T. · 1:1']];
+const OFFERS=[['Campagne 97 $',offerDescriptions['97'].label],['Groupe',offerDescriptions.group.label],['1:1',offerDescriptions.individual.label]];
 
 const TODAY=torontoToday(),WEEKS=recentWeeks(TODAY,8);
 const st={recovery:false,oauth:{},sb:null,user:null,admin:false,clients:[],clientId:null,page:'follow',week:WEEKS[1],meeting:null,member:null,editing:null,message:'',error:'',d:null,agency:null,agencyOAuth:null,meetingQueue:null};
