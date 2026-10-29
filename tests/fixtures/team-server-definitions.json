@@ -1,0 +1,341 @@
+{
+  "tables": [
+    {
+      "rls": true,
+      "table": "daily_reports",
+      "force_rls": false
+    },
+    {
+      "rls": true,
+      "table": "team_daily_reports",
+      "force_rls": false
+    },
+    {
+      "rls": true,
+      "table": "team_members",
+      "force_rls": false
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "DELETE",
+      "qual": "( SELECT private.is_admin() AS is_admin)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "daily_reports",
+      "permissive": "PERMISSIVE",
+      "policyname": "daily_delete",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "daily_reports",
+      "permissive": "PERMISSIVE",
+      "policyname": "daily_insert",
+      "schemaname": "public",
+      "with_check": "(private.can_write_shared_daily(client_id) AND (updated_by = ( SELECT auth.uid() AS uid)))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "private.can_access_client(client_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "daily_reports",
+      "permissive": "PERMISSIVE",
+      "policyname": "daily_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "private.can_write_shared_daily(client_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "daily_reports",
+      "permissive": "PERMISSIVE",
+      "policyname": "daily_update",
+      "schemaname": "public",
+      "with_check": "(private.can_write_shared_daily(client_id) AND (updated_by = ( SELECT auth.uid() AS uid)))"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "(private.is_admin() OR private.offer_capability(client_id, 'team'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "team_daily_reports",
+      "permissive": "RESTRICTIVE",
+      "policyname": "offer_capability_limit",
+      "schemaname": "public",
+      "with_check": "(private.is_admin() OR private.offer_capability(client_id, 'team'::text))"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "( SELECT private.is_admin() AS is_admin)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "team_daily_reports",
+      "permissive": "PERMISSIVE",
+      "policyname": "team_daily_delete",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "team_daily_reports",
+      "permissive": "PERMISSIVE",
+      "policyname": "team_daily_insert",
+      "schemaname": "public",
+      "with_check": "(private.can_write_team_report(client_id, member_id) AND (updated_by = ( SELECT auth.uid() AS uid)))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "private.can_access_client(client_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "team_daily_reports",
+      "permissive": "PERMISSIVE",
+      "policyname": "team_daily_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "private.can_write_team_report(client_id, member_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "team_daily_reports",
+      "permissive": "PERMISSIVE",
+      "policyname": "team_daily_update",
+      "schemaname": "public",
+      "with_check": "(private.can_write_team_report(client_id, member_id) AND (updated_by = ( SELECT auth.uid() AS uid)))"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "(private.is_admin() OR private.offer_capability(client_id, 'team'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "team_members",
+      "permissive": "RESTRICTIVE",
+      "policyname": "offer_capability_limit",
+      "schemaname": "public",
+      "with_check": "(private.is_admin() OR private.offer_capability(client_id, 'team'::text))"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT private.is_admin() AS is_admin)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "team_members",
+      "permissive": "PERMISSIVE",
+      "policyname": "team_members_admin",
+      "schemaname": "public",
+      "with_check": "( SELECT private.is_admin() AS is_admin)"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "private.can_access_client(client_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "team_members",
+      "permissive": "PERMISSIVE",
+      "policyname": "team_members_read",
+      "schemaname": "public",
+      "with_check": null
+    }
+  ],
+  "functions": [
+    {
+      "name": "private.can_write_shared_daily",
+      "definition": "CREATE OR REPLACE FUNCTION private.can_write_shared_daily(cid uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n select private.is_admin() or (private.can_access_client(cid) and exists(select 1 from public.clients c where c.id=cid and (c.work_mode='Solo' or exists(select 1 from public.team_members m where m.client_id=cid and m.user_id=auth.uid() and m.team_role='Responsable'))));\n$function$\n"
+    },
+    {
+      "name": "private.can_write_team_report",
+      "definition": "CREATE OR REPLACE FUNCTION private.can_write_team_report(cid uuid, mid uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE\n SET search_path TO ''\nAS $function$\n select private.is_admin() or (private.can_access_client(cid) and exists(select 1 from public.team_members m join public.clients c on c.id=m.client_id where m.id=mid and m.client_id=cid and m.user_id=(select auth.uid()) and c.work_mode='Équipe'));\n$function$\n"
+    },
+    {
+      "name": "private.keep_team_report_identity",
+      "definition": "CREATE OR REPLACE FUNCTION private.keep_team_report_identity()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\nbegin\n if new.client_id<>old.client_id or new.member_id<>old.member_id or new.report_date<>old.report_date then raise exception 'Le dossier, la personne et la journée ne peuvent pas être déplacés'; end if;\n return new;\nend; $function$\n"
+    },
+    {
+      "name": "public.save_team_member",
+      "definition": "CREATE OR REPLACE FUNCTION public.save_team_member(p_client_id uuid, p_member_id uuid, p_name text, p_role text, p_email text DEFAULT ''::text)\n RETURNS uuid\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\ndeclare uid uuid;mid uuid;old_uid uuid;\nbegin\n if not private.is_admin() then raise exception 'Accès administrateur requis'; end if;\n if length(trim(p_name)) not between 1 and 150 or p_role not in ('Responsable','Membre') then raise exception 'Nom ou rôle invalide'; end if;\n if not exists(select 1 from public.clients where id=p_client_id and work_mode='Équipe') then raise exception 'Activez le mode Équipe sur ce dossier'; end if;\n if trim(coalesce(p_email,''))<>'' then select id into uid from public.profiles where lower(email)=lower(trim(p_email)); if uid is null then raise exception 'Créez d’abord l’accès de cette personne au portail, ou laissez le courriel vide pour préparer sa fiche'; end if; end if;\n if p_member_id is not null then\n  select user_id into old_uid from public.team_members where id=p_member_id and client_id=p_client_id for update;\n  if not found then raise exception 'Membre introuvable'; end if;\n  if old_uid is not null and uid is not null and old_uid<>uid then raise exception 'Cet accès est déjà associé à une autre personne'; end if;\n  update public.team_members set name=trim(p_name),team_role=p_role,user_id=coalesce(old_uid,uid) where id=p_member_id returning id into mid;\n else insert into public.team_members(client_id,user_id,name,team_role) values(p_client_id,uid,trim(p_name),p_role) returning id into mid; end if;\n if uid is not null then insert into public.client_memberships(client_id,user_id) values(p_client_id,uid) on conflict do nothing; end if;\n return mid;\nend; $function$\n"
+    }
+  ],
+  "constraints": [
+    {
+      "table": "daily_reports",
+      "definition": "CHECK (((attended IS NULL) OR (appointments_due IS NULL) OR (attended <= appointments_due)))"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "CHECK ((appointments >= 0))"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "CHECK ((appointments_due >= 0))"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "CHECK ((attended >= 0))"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "UNIQUE (client_id, report_date)"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "CHECK ((commissions >= (0)::numeric))"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "CHECK ((invalid_numbers >= 0))"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "CHECK ((leads >= 0))"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "CHECK ((pitches >= 0))"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "CHECK ((responses >= 0))"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "CHECK ((signatures >= 0))"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "CHECK ((spend >= (0)::numeric))"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "CHECK ((transactions >= 0))"
+    },
+    {
+      "table": "daily_reports",
+      "definition": "FOREIGN KEY (updated_by) REFERENCES auth.users(id)"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "CHECK ((appointments >= 0))"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "CHECK ((appointments_due >= 0))"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "CHECK ((attended >= 0))"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "CHECK ((calls >= 0))"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "CHECK (((attended IS NULL) OR (appointments_due IS NULL) OR (attended <= appointments_due)))"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "CHECK (((leads_assigned IS NOT NULL) OR (calls IS NOT NULL) OR (responses IS NOT NULL) OR (appointments IS NOT NULL) OR (appointments_due IS NOT NULL) OR (attended IS NOT NULL) OR (pitches IS NOT NULL) OR (signatures IS NOT NULL)))"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "FOREIGN KEY (client_id, member_id) REFERENCES team_members(client_id, id) ON DELETE RESTRICT"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "UNIQUE (client_id, member_id, report_date)"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "CHECK ((leads_assigned >= 0))"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "CHECK ((pitches >= 0))"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "CHECK ((report_date <= ((now() AT TIME ZONE 'America/Toronto'::text))::date))"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "CHECK ((responses >= 0))"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "CHECK ((signatures >= 0))"
+    },
+    {
+      "table": "team_daily_reports",
+      "definition": "FOREIGN KEY (updated_by) REFERENCES auth.users(id)"
+    },
+    {
+      "table": "team_members",
+      "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "team_members",
+      "definition": "UNIQUE (client_id, id)"
+    },
+    {
+      "table": "team_members",
+      "definition": "UNIQUE (client_id, user_id)"
+    },
+    {
+      "table": "team_members",
+      "definition": "CHECK (((length(TRIM(BOTH FROM name)) >= 1) AND (length(TRIM(BOTH FROM name)) <= 150)))"
+    },
+    {
+      "table": "team_members",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table": "team_members",
+      "definition": "CHECK ((team_role = ANY (ARRAY['Responsable'::text, 'Membre'::text])))"
+    },
+    {
+      "table": "team_members",
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL"
+    }
+  ]
+}

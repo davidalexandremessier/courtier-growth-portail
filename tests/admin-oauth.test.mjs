@@ -1,0 +1,22 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {beginAdminOAuth,finishAdminOAuth,ADMIN_SCOPES} from '../server/admin-oauth.mjs';
+process.env.OAUTH_ENCRYPTION_KEY=Buffer.alloc(32,7).toString('base64');
+const env={APP_URL:'https://example.test',ZOOM_USER_OAUTH_CLIENT_ID:'synthetic',ZOOM_USER_OAUTH_CLIENT_SECRET:'synthetic',WISPR_OAUTH_CLIENT_ID:'synthetic'};
+const actor={id:'admin-a',admin:true};
+function store(){const states=new Map(),saved=[];return {saved,async createState(x){states.set(x.key,x)},async consumeState(x){const v=states.get(x.key);if(!v||v.adminId!==x.adminId||v.provider!==x.provider||v.expires<=x.now)return false;states.delete(x.key);return true},async stageCredential(v){saved.push(v)}}}
+const exchange=p=>async url=>({ok:true,json:async()=>url.includes('/users/me')?{id:'synthetic-zoom',account_id:'synthetic-account'}:url.includes('/userinfo')?{sub:'synthetic-wispr'}:({access_token:'synthetic-access',refresh_token:'synthetic-refresh',expires_in:3600,scope:ADMIN_SCOPES[p].join(' ')})});
+test('admin OAuth: clients A/B denied before state or network',async()=>{for(const id of ['client-a','client-b'])await assert.rejects(beginAdminOAuth({actor:{id,admin:false},provider:'zoom',store:store(),env}),/administrateur/)});
+test('admin OAuth: PKCE, exact callback, replay and concurrent callback rejection',async()=>{for(const provider of ['zoom','wispr']){const s=store(),flow=await beginAdminOAuth({actor,provider,store:s,env}),url=new URL(flow.url);assert.equal(url.searchParams.get('code_challenge_method'),'S256');assert.equal(url.searchParams.get('redirect_uri'),'https://example.test/api/agency-oauth?callback='+provider);const args={actor,provider,store:s,env,cookie:flow.cookie,state:url.searchParams.get('state'),code:'synthetic',fetcher:exchange(provider)};const r=await Promise.allSettled([finishAdminOAuth(args),finishAdminOAuth(args)]);assert.equal(r.filter(x=>x.status==='fulfilled').length,1);assert.equal(s.saved.length,1);assert.ok(!s.saved[0].ciphertext.includes('synthetic-access'));assert.equal(r.find(x=>x.status==='fulfilled').value.importVerified,false)}});
+test('admin OAuth: tampering, wrong admin, expiry, broad scopes rejected',async()=>{const s=store(),f=await beginAdminOAuth({actor,provider:'zoom',store:s,env,now:1000});const args={actor,provider:'zoom',store:s,env,cookie:f.cookie,state:new URL(f.url).searchParams.get('state'),code:'synthetic',now:1001,fetcher:exchange('zoom')};await assert.rejects(finishAdminOAuth({...args,state:'x'.repeat(43)}));await assert.rejects(finishAdminOAuth({...args,actor:{id:'other-admin',admin:true}}));await assert.rejects(finishAdminOAuth({...args,now:601000}));await assert.rejects(finishAdminOAuth({...args,fetcher:async()=>({ok:true,json:async()=>({access_token:'synthetic',refresh_token:'synthetic',expires_in:3600,scope:ADMIN_SCOPES.zoom.join(' ')+' meeting:write:meeting'})})}),/Droits/);assert.equal(s.saved.length,0)});
+
+test('admin refresh: one concurrent exchange, identity retained, token never returned to UI response',async()=>{
+ const {refreshAdminOAuth}=await import('../server/admin-oauth.mjs');const {seal}=await import('../server/oauth.mjs');let locked=false,exchanges=0,finished=0;
+ const row={confirmed:true,revision:1,expires_at:new Date(0).toISOString(),identity:{id:'synthetic-zoom',accountId:'synthetic-account'},ciphertext:seal({access_token:'old',refresh_token:'synthetic-refresh'},'agency-credential:'+actor.id+':zoom')};
+ const s={get:async()=>row,lease:async()=>{if(locked)return false;locked=true;return true},finish:async()=>{finished++;return true}};
+ const fetcher=async url=>{if(url.includes('/users/me'))return {ok:true,json:async()=>({id:'synthetic-zoom',account_id:'synthetic-account'})};exchanges++;return {ok:true,json:async()=>({access_token:'new',refresh_token:'rotated',expires_in:3600,scope:ADMIN_SCOPES.zoom.join(' ')})}};
+ const r=await Promise.allSettled([refreshAdminOAuth({actor,provider:'zoom',store:s,env,fetcher}),refreshAdminOAuth({actor,provider:'zoom',store:s,env,fetcher})]);assert.equal(exchanges,1);assert.equal(finished,1);assert.equal(r.filter(x=>x.status==='fulfilled').length,1);
+});
+test('summary discovery scope is refused until its explicit configuration gate is enabled',async()=>{
+ const {adminScopes}=await import('../server/admin-oauth.mjs');assert.equal(adminScopes('zoom',env).includes('meeting:read:list_summaries'),false);
+ assert.equal(adminScopes('zoom',{...env,ZOOM_SUMMARY_DISCOVERY_READY:'true'}).includes('meeting:read:list_summaries'),true);
+});

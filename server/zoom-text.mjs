@@ -1,0 +1,9 @@
+import {CallError} from './calls.mjs';
+export function zoomSummaryText(data){
+ const edited=data.edited_summary;const sections=typeof data.summary_content==='string'&&data.summary_content.trim()?[data.summary_content]:[edited?.summary_overview||data.summary_overview||'',typeof edited?.summary_details==='string'?edited.summary_details:(data.summary_details||[]).map(d=>[d.label,d.summary].filter(Boolean).join('\n')).join('\n\n'),(edited?.next_steps||data.next_steps||[]).length?'PROCHAINES ÉTAPES\n'+(edited?.next_steps||data.next_steps).map(x=>'• '+x).join('\n'):''];
+ const text=sections.filter(Boolean).join('\n\n').trim();if(!text)throw new CallError('Zoom n’a pas de résumé disponible pour cet appel. Utilisez la transcription.');if(text.length>29000)throw new CallError('Le résumé Zoom est trop volumineux pour un compte rendu.');return 'Résumé Zoom AI Companion — à relire\n\n'+text;
+}
+export async function readNativeZoomSummary(token,uuid){const once=encodeURIComponent(uuid),encoded=uuid.startsWith('/')||uuid.includes('//')?encodeURIComponent(once):once;let res;try{res=await fetch('https://api.zoom.us/v2/meetings/'+encoded+'/meeting_summary',{headers:{Authorization:'Bearer '+token},redirect:'error',signal:AbortSignal.timeout(15000)})}catch{throw new CallError('Le résumé Zoom est temporairement inaccessible.',502)}
+ if(!res.ok){let code;try{code=(await res.json()).code}catch{}throw new CallError(code===4711||res.status===401||res.status===403?'La lecture des résumés Zoom doit être autorisée dans l’application Zoom.':res.status===404||[3000,2305,3001].includes(code)?'Zoom n’a pas de résumé disponible pour cet appel. Utilisez la transcription.':'Lecture du résumé Zoom impossible. Réessayez.',502)}
+ const data=await res.json();if(data.meeting_uuid&&data.meeting_uuid!==uuid)throw new CallError('Le résumé Zoom ne correspond pas à cette occurrence.');return zoomSummaryText(data);
+}

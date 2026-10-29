@@ -1,0 +1,39 @@
+.link.light{color:#E3C98A;display:block;margin-top:6px}
+label.inline{display:flex;gap:10px;align-items:center;font-weight:600}label.inline input{width:22px;min-height:22px;accent-color:var(--gold)}
+textarea{font:inherit;min-height:80px}
+.decisions{margin:6px 0 10px;padding-left:20px}.decisions li{margin:4px 0}
+.head-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+dialog fieldset.status label{display:flex;gap:8px;align-items:center;margin:6px 0}
+#activation-link{width:100%;font-size:14px}
+/* Style Page 1 — mobile d'abord */
+html{overflow-x:hidden}
+body{overflow-wrap:anywhere}
+.main .grid,.main .col{gap:18px}
+@media(max-width:779px){
+ h1{font-size:30px}h2{font-size:20px}
+ .main{padding:18px 14px 112px}
+ .card,.rail-card{padding:18px 16px}
+ .section-head{flex-wrap:wrap;align-items:flex-start}
+ .head-actions{width:100%}.head-actions>button,.head-actions>a{flex:1 1 140px}
+ .task .secondary,.client-row>button{justify-self:stretch;width:100%}
+ .meet-row{grid-template-columns:auto 1fr;padding:14px;gap:12px}.meet-row .chev{display:none}
+ .broker-top{grid-template-columns:auto 1fr}.broker-top>:last-child{grid-column:1/-1;justify-self:start}
+ .detail-head{gap:12px}.detail-title{font-size:26px}
+ .table-wrap{margin:0 -16px;padding:0 16px}table{font-size:14px}th,td{padding:9px 6px;white-space:nowrap}
+ .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .secondary-link{width:100%;margin:8px 0 0}
+ input,select,textarea{font-size:16px}
+ dialog{margin:auto auto 0;width:100%;max-width:100%;border-radius:22px 22px 0 0;max-height:92vh;padding:20px 16px calc(20px + env(safe-area-inset-bottom))}
+ dialog .primary,dialog button[type=submit]{width:100%}
+ .tabs button{font-size:13px;min-height:60px}
+ .toast,.error{font-size:14px}
+}
+/* Onglets du dossier client */
+.pills{display:flex;gap:8px;overflow-x:auto;margin:4px 0 18px;padding-bottom:2px}
+.pills button{min-height:40px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--paper);font-size:14px;font-weight:600;white-space:nowrap}
+.pills button[aria-current=page]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.conn-head .tool-ico{flex:none}
+.client-row h3{font-size:17px}
+.queue-item{padding:16px 0;border-top:1px solid var(--line)}.queue-item:first-of-type{border-top:0}
+.queue-item h3{font-family:var(--serif);font-weight:600;font-size:18px}
+.queue-item select{margin:6px 0 10px}

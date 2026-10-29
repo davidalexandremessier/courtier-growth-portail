@@ -1,0 +1,6 @@
+import {timingSafeEqual} from 'node:crypto';
+import {createClient} from '@supabase/supabase-js';
+import {syncZoom} from '../server/calls.mjs';
+export const config={maxDuration:300};
+export default async function handler(req,res){res.setHeader('Cache-Control','no-store');if(req.method!=='GET')return res.status(405).json({error:'Méthode non permise.'});const expected=process.env.CRON_SECRET,actual=(req.headers.authorization||'').replace(/^Bearer /,'');if(!expected||!actual||Buffer.byteLength(actual)!==Buffer.byteLength(expected)||!timingSafeEqual(Buffer.from(actual),Buffer.from(expected)))return res.status(401).json({error:'Accès refusé.'});if(!process.env.SUPABASE_ARCHIVE_SECRET_KEY)return res.status(503).json({error:'Archivage automatique non activé.'});
+ try{const db=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_ARCHIVE_SECRET_KEY,{auth:{persistSession:false,autoRefreshToken:false}});const result=await syncZoom(db,{reconcileSources:false});console.info('zoom_archive',{count:result.count,transcripts:result.withTranscript,summaries:result.withSummary,warnings:result.warnings.length});return res.status(200).json({archived:result.count,warnings:result.warnings.length})}catch{console.error('zoom_archive_failed');return res.status(502).json({error:'Archivage Zoom à vérifier.'})}}

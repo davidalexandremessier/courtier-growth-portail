@@ -1,0 +1,5 @@
+// Inspection locale seulement. Aucun SDK réseau, aucune écriture dans le portail.
+import fs from 'node:fs/promises';
+const path=process.argv[2];if(!path)throw Error('Indiquez le chemin du manifeste local à inspecter.');const raw=JSON.parse(await fs.readFile(path,'utf8'));
+const counts={};for(const a of raw.artifacts||[])counts[a.type]=(counts[a.type]||0)+1;
+const report={run_id:raw.run_id,source_client_id:raw.client_id,status:'staging_only',counts,all_draft:(raw.artifacts||[]).every(a=>a.status==='draft'),approvals_present:(raw.approvals||[]).length>0,missing_inputs:(raw.missing_inputs||[]).length,required_mapping:['client_id UUID vérifié','profile_id UUID de la fiche revue','expected_version actuel','ad[] → ads','creative_brief[] → trois briefs','email[] → dix courriels','landing_page[] → quatre pages','source_refs → citations source/section','Fxx → fact_registry confirmé du client'],requires_human_review:true,import_allowed:false,reason:'Le manifeste documentaire doit être réconcilié avec le dossier et ses faits avant import visible du client. Aucune approbation transférée.'};console.log(JSON.stringify(report,null,2));

@@ -1,0 +1,10 @@
+import {build} from 'esbuild';
+import fs from 'node:fs/promises';
+await fs.rm('dist',{recursive:true,force:true});
+await fs.mkdir('dist',{recursive:true});
+await fs.cp('public/assets','dist/assets',{recursive:true});
+for(const f of ['manifest.webmanifest','sw.js'])await fs.copyFile('public/'+f,'dist/'+f);
+await build({entryPoints:['src/v2/main.js'],inject:['src/v2/ui.mjs'],bundle:true,minify:true,format:'esm',target:'es2022',outfile:'dist/v2.js'});
+await fs.copyFile('public-v2/index.html','dist/index.html');
+await fs.copyFile('public-v2/style.css','dist/v2.css');
+await fs.copyFile('public-v2/extra.css','dist/v2-extra.css');
