@@ -89,3 +89,25 @@ dialog details[open]{display:grid;gap:14px}
 li.client-row[hidden]{display:none}
 section[id^="g-"]{scroll-margin-top:16px;margin-bottom:16px}
 @media(min-width:780px){.tiles.summary{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:24px}.tiles.summary .tile{padding:18px 20px}.tiles.summary strong{font-size:30px}.tiles.counts{max-width:640px}.search{max-width:420px}}
+/* V3 : file « À associer » classée par jour */
+.queue .q-tools{display:grid;gap:10px;margin:4px 0 8px}
+.q-filters{margin:0}.q-filters button span{color:var(--muted);font-weight:500;margin-left:4px}
+.q-filters button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}.q-filters button[aria-pressed=true] span{color:#CFCBC0}
+.q-day{margin-top:18px}.q-day[hidden]{display:none}
+.q-day h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gold-ink);margin-bottom:6px}
+.q-row{border-top:1px solid var(--line-2)}.q-row[hidden]{display:none}
+.q-row>details>summary{list-style:none;display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;padding:12px 4px;min-height:56px;cursor:pointer;color:var(--ink);font-weight:400}
+.q-row>details>summary::-webkit-details-marker{display:none}
+.q-row>details[open]>summary{background:var(--linen);border-radius:12px}
+.q-time{font-family:var(--serif);font-weight:600;font-size:17px}
+.q-main{display:grid;gap:4px;min-width:0}.q-main strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.q-meta{display:flex;flex-wrap:wrap;gap:6px}.q-meta .tag{font-size:12px}.tag.gold{background:var(--gold-pale);color:var(--gold-ink)}
+.q-body{display:grid;gap:12px;padding:12px 4px 18px}
+.q-assign{display:grid;gap:10px}
+.q-sources{display:grid;gap:2px}.q-sources summary{min-height:40px;font-size:14px}
+@media(min-width:780px){.queue .q-tools{grid-template-columns:1fr 320px;align-items:center}.queue .search{margin:0}.q-assign{grid-template-columns:1fr auto;align-items:end}.q-assign .primary{width:auto;padding:0 22px}}
+@media(max-width:779px){.q-row>details>summary{grid-template-columns:46px 1fr;}.q-row>details>summary>.chip{grid-column:2;justify-self:start}}
+/* Profil agence */
+.tiles.counts button.tile{text-align:left;border:0;min-height:auto;background:var(--paper);border:1px solid var(--line)}
+.tiles.counts button.tile.yellow{background:var(--amber-bg);color:var(--amber)}.tiles.counts button.tile.red{background:var(--red-bg);color:var(--red)}
+.tiles.counts button.tile strong{font-family:var(--serif);font-size:26px;font-weight:600}.tiles.counts button.tile span{display:block;color:inherit;font-weight:600;font-size:13px}
