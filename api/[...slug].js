@@ -1,4 +1,5 @@
 // Une seule fonction serveur pour tout /api (limite Hobby de 12 fonctions).
+import botClients from '../routes/bot-clients.js';
 import calls from '../routes/calls.js';
 import configRoute from '../routes/config.js';
 import connections from '../routes/connections.js';
@@ -13,6 +14,7 @@ import stats from '../routes/stats.js';
 import zoomArchive from '../routes/zoom-archive.js';
 
 const routes={
+ 'bot-clients':botClients,
  calls,
  config:configRoute,
  connections,
