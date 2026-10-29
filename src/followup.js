@@ -1,5 +1,6 @@
 import {selectSectionView} from "./section-navigation.js";
 import {escapeHTML as h} from './model.mjs';
+import {offerLabel} from './offers.mjs';
 import {clientsToFollow} from './support.mjs';
 let context,render,reload,navigate,toast,filter='all',query='',owner='all',reviewing=false;
 const groups={all:null,blockers:['blockers'],preparations:['preparations'],tasks:['tasks','coach_tasks'],help:['urgent','help','help_due'],validations:['onboarding'],data:['data'],results:['kpi'],checks:['data','kpi','onboarding','end']};
@@ -14,7 +15,7 @@ function reasonLine(reason,client){return `<li class="followup-point ${tone(reas
 export function followupHTML(c,requests,error){
  if(!c.admin||c.previewClient)return '';
  const all=clientsToFollow(c.data,requests),matches=reason=>(!groups[filter]||groups[filter].includes(reason.key))&&(owner==='all'||reason.owner===owner);
- const rows=all.filter(r=>(!query||(r.client.name+' '+(r.client.offer||'')).toLocaleLowerCase('fr-CA').includes(query.toLocaleLowerCase('fr-CA')))&&r.reasons.some(matches));
+ const rows=all.filter(r=>(!query||(r.client.name+' '+offerLabel(r.client.offer)+' '+(r.client.offer||'')).toLocaleLowerCase('fr-CA').includes(query.toLocaleLowerCase('fr-CA')))&&r.reasons.some(matches));
  const count=key=>all.reduce((n,r)=>n+(r[key]?.length||0),0),dataOnly=all.filter(r=>r.reasons.every(reason=>reason.key==='data')).length;
  const summary=[['Dossiers à suivre',all.length,'all'],['Blocages à lire',count('blockers'),'blockers'],['Approbations',count('steps'),'validations'],['Rencontres à préparer',count('preparations'),'preparations'],['Actions en retard',count('lateTasks')+count('coachTasks'),'tasks']];
  return `<div class="page-heading followup-heading"><div><span class="eyebrow">VOTRE SUIVI CLIENT</span><h1>Clients à suivre</h1><p>Qui a besoin de vous? Voici quoi faire ensuite.</p></div><div class="heading-actions"><button class="btn secondary" data-help="refresh">Actualiser</button></div></div>
@@ -26,7 +27,7 @@ export function followupHTML(c,requests,error){
  <p class="followup-results" role="status">${rows.length} dossier(s) affiché(s)${filter!=='all'||owner!=='all'||query?' · filtres appliqués':''}</p>
  <div class="coach-queue followup-worklist">${rows.map(r=>{
   const reasons=r.reasons.filter(matches),first=reasons[0],others=reasons.slice(1),extraRefs=[...r.blockers,...r.preparations].filter(ref=>!reasons.some(reason=>reason.reflectionId===ref.id)&&matches({key:ref.kind==='weekly'?'blockers':'preparations',owner:'coach'}));
-  return `<article class="panel coach-queue-card followup-workcard ${tone(first)}"><header><div><h2>${h(r.client.name)}</h2><p>${h(r.client.offer||'Offre à préciser')} · ${h(r.client.status)}</p></div><span class="queue-badge ${tone(first)}">${h(first.state)}</span></header>
+  return `<article class="panel coach-queue-card followup-workcard ${tone(first)}"><header><div><h2>${h(r.client.name)}</h2><p>${h(offerLabel(r.client.offer)||'Offre à préciser')} · ${h(r.client.status)}</p></div><span class="queue-badge ${tone(first)}">${h(first.state)}</span></header>
    <div class="queue-main"><div class="followup-why"><span class="followup-source">${h(first.source)}</span><h3 class="queue-reason">${h(first.label)}</h3><p>${h(first.detail)}</p></div>
     <div class="followup-next"><dl><div><dt>Qui agit?</dt><dd>${h(first.ownerLabel)}</dd></div><div><dt>Prochaine action</dt><dd>${h(first.nextAction)}</dd></div><div><dt>${h(first.dateLabel)}</dt><dd class="${first.overdue?'date-late':''}">${first.dueDate?date(first.dueDate)+(first.overdue?' · en retard':''):'Non fixée'}</dd></div></dl>${openButton(first,r.client.id,'primary')}</div>
    </div>
