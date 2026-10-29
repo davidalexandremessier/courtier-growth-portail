@@ -1,0 +1,22 @@
+[
+  {
+    "path": "/",
+    "status": 200,
+    "response": "HTML"
+  },
+  {
+    "path": "/api/config",
+    "status": 200,
+    "response": "{\"url\":\"\",\"key\":\"\",\"emailRecoveryEnabled\":false,\"configured\":false}"
+  },
+  {
+    "path": "/api/agency-oauth",
+    "status": 401,
+    "response": "{\"error\":\"Connexion requise.\"}"
+  },
+  {
+    "path": "/api/wispr-client-metadata",
+    "status": 503,
+    "response": "{\"error\":\"Configuration indisponible.\"}"
+  }
+]

@@ -37,3 +37,8 @@ body{overflow-wrap:anywhere}
 .queue-item{padding:16px 0;border-top:1px solid var(--line)}.queue-item:first-of-type{border-top:0}
 .queue-item h3{font-family:var(--serif);font-weight:600;font-size:18px}
 .queue-item select{margin:6px 0 10px}
+/* V3 : Rencontres et profil */
+.meet-hero .primary.gold{margin-top:16px;background:var(--gold-rail);border-color:var(--gold-rail);color:var(--ink)}
+.coach-line{display:flex;gap:10px;align-items:center;margin-top:12px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);font-size:14px;color:#E7E4DC}
+.coach-line .monogram{width:30px;height:30px;font-size:12px}
+dialog details summary{color:var(--gold-ink)}

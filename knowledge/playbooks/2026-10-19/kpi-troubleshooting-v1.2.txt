@@ -1,0 +1,339 @@
+COURTIER GROWTH  ·  SYSTÈME L.I.S.T.
+Playbook
+KPI Troubleshooting
+Quand les résultats ne sortent pas, ce playbook te dit où regarder : dans le marketing, dans le funnel ou dans ton processus de vente. Tu trouves le trou dans le tuyau sans tout casser en même temps.
+AU PROGRAMME
+1    Les 4 règles avant de regarder un chiffre
+2    La cascade : le tuyau en un seul tableau
+3    Les 3 zones en détail
+4    Le calcul qui garde tout en perspective
+5    Ta routine et ta checklist
+
+
+Version 1.2  ·  Octobre 2026  ·  Usage client
+________________
+
+
+PARTIE 1
+Les 4 règles avant de regarder un chiffre
+Un chiffre bas n’est jamais une raison de tout refaire. C’est une flèche qui pointe vers un endroit précis du tuyau.
+Les autres playbooks te montrent comment construire chaque étape. Celui-ci t’apprend à lire les chiffres qui en sortent, pour savoir quelle étape a un problème et laquelle n’en a pas.
+
+
+1. La saisie avant le diagnostic. Un appel sans statut est un chiffre invisible, pas un chiffre bas. Avant de chercher un problème, assure-toi que chaque carte du CRM a un statut à jour.
+2. Une seule variable à la fois. Tu trouves le trou, tu corriges cet élément-là, tu laisses rouler assez longtemps pour voir l’effet. Si tu changes deux choses, tu ne sauras plus laquelle a fait la différence.
+3. Remonte le tuyau dans l’ordre. Marketing, puis Funnel, puis Processus de vente. Un trou en amont rend inutile tout travail en aval.
+4. Compare dans le temps, pas seulement à la cible. Ton propre historique devient vite ta meilleure référence.
+
+
+PENDANT LA PHASE DE VALIDATION
+Les 30 à 60 premiers jours, un chiffre sous la cible n’est pas un échec : c’est l’information qui te dit où regarder. Corrige un seul élément et redonne du temps au système avant de juger le résultat.
+	________________
+
+
+PARTIE 2
+La cascade : le tuyau en un seul tableau
+Si tu ne lis qu’une page, c’est celle-ci.
+Trouve la première métrique sous sa cible en lisant du haut vers le bas : c’est presque toujours elle qui est en cause, pas les suivantes.
+#
+	Zone
+	Métrique
+	Cible
+	Si c’est bas, l’action est…
+	1
+	Marketing
+	CTR (All)
+	3 %+
+	Revoir le créatif (visuel ou 5 premières secondes)
+	2
+	Marketing
+	CTR (Link Click)
+	1 %+
+	Revoir le copy ou l’offre
+	3
+	Marketing → Funnel
+	Conversion clic → lead
+	~10 %
+	Revoir la landing page, le formulaire ou la cohérence du message pub → page
+	4
+	Marketing
+	Coût par lead
+	10 à 20 $
+	Résultat des lignes 1 à 3 ; sinon, ciblage ou créatif fatigué
+	5
+	Funnel
+	Complétion du quiz
+	80 %+
+	60-80 % : surveiller. Sous 60 % : raccourcir, revérifier le fil rouge
+	6
+	Funnel
+	Booking automatique
+	5 à 10 %
+	Revoir l’offre de consultation et la vidéo de la page Thank You
+	7
+	Vente
+	Réponses
+	40 à 50 %
+	Appeler chaque lead 3 fois en 3 jours, plus 2 à 3 relances texto
+	8
+	Vente
+	Calls découverte bookés
+	15 à 25 %
+	Revoir la proposition de l’appel et le script de qualification
+	9
+	Vente
+	Show up découverte
+	85 %
+	Revoir la séquence de rappels et le mini devoir
+	10
+	Vente
+	Qualified rate
+	40 à 50 %
+	Revoir l’appel découverte et la sélection des prospects
+	11
+	Vente
+	Show up pitch
+	85 %
+	Revoir la confirmation et le rappel du pitch
+	12
+	Vente
+	Taux de close
+	40 %
+	Revoir le pitch (Playbook Sales Process)
+	13
+	Vente → Marketing
+	Numéros invalides
+	25 % max
+	Remonter au ciblage ou au champ téléphone
+	14
+	Tout le tuyau
+	ROAS
+	10x min.
+	Reprendre du haut : le trou peut être n’importe où
+	
+
+POURQUOI CET ORDRE
+Chaque ligne dépend de celle qui vient avant. Corriger le pitch (ligne 12) ne répare rien si le vrai trou est le créatif (ligne 1) : tu auras juste un meilleur closer pour les quelques leads qui restent.
+	
+
+ATTENTION À L’ÉCHELLE
+Les volumes (réponses, calls bookés, closes) se calculent sur le total des leads. Les show up, le qualified rate et le taux de close se calculent sur l’étape juste avant. C’est normal de voir 85 % ou 40 % d’un côté et 3 % de closes de l’autre : ce ne sont pas les mêmes échelles.
+	________________
+
+
+PARTIE 3
+Les 3 zones en détail
+Chaque zone suit le même gabarit : les chiffres, où regarder s’ils sont bas, et les cas fréquents.
+Zone 1 — Le Marketing
+La pub arrête le scroll, qualifie l’intérêt et amène le clic. Dans Meta Ads Manager, lis ses métriques dans cet ordre, une marche à la fois.
+Ce que tu observes
+	Ce que tu corriges
+	CTR (All) sous 3 %
+	Le créatif : le Call Out ou les 5 premières secondes ne font pas leur travail
+	CTR (All) bon, CTR (Link Click) sous 1 %
+	Le copy ou l’offre : le Hook accroche, mais Problème / Solution / CTA ne ferme pas
+	Les deux bons, conversion clic → lead sous ~10 %
+	La landing page, le formulaire, ou la cohérence du message entre les deux : vérifie les deux pistes
+	REPÈRES PRATIQUES
+* Créatif : compréhensible en environ 5 secondes. Si quelqu’un doit y réfléchir, il a déjà continué à scroller.
+* Formulaire : 3 à 5 questions. Au-delà, la complétion chute plus vite que la qualité ne monte.
+* Volume ou qualité : collecte le contact d’abord, puis pose les questions de qualification ensuite (le quiz). Tu gardes le volume et la qualité. Compare toujours la conversion clic → lead au taux de close en bout de tuyau.
+CAS FRÉQUENTS
+* « J’ai des clics, mais presque pas de leads. » Le problème est ce qui suit le clic. Vérifie le formulaire, puis le titre de l’opt-in : reconnaît-il la situation en 3 secondes ?
+* « Le volume de leads est trop bas. » C’est un problème de budget ou de coût par lead. Élargis l’audience ou renouvelle les créatifs avant d’ajouter du budget.
+* « Beaucoup de numéros invalides. » Resserre l’audience ou ajoute une validation de format au champ téléphone.
+________________
+
+
+Zone 2 — Le Funnel
+Ton funnel a quatre pages dans GHL, chacune avec un seul travail.
+Page
+	Son seul travail
+	Ce que le lead fait
+	1. Opt-in
+	Capturer le contact
+	Donne prénom, courriel, cellulaire
+	2. Quiz
+	Qualifier et ouvrir la conversation
+	Répond à 3 questions, reçoit un texto conseil « manuel »
+	3. Thank You
+	Livrer la VSL et faire booker
+	Regarde le guide, réserve 30 minutes
+	4. Confirmation
+	Faire en sorte qu’il se présente
+	Prépare 3 choses, répond « prêt »
+	
+
+80 %+
+Complétion du quiz
+	5 à 10 %
+Booking automatique
+	
+
+Complétion du quiz : entre 60 et 80 %, surveille ; sous 60 %, raccourcis la page tout de suite. Les autres taux (opt-in, visionnement de la VSL) n’ont pas de cible universelle : compare-les dans le temps, sur ta propre page.
+LE FIL ROUGE OBLIGATOIRE
+La même Peur #1 doit traverser le titre de l’opt-in, le choix du quiz, le texto et les bullets de l’appel. Dès qu’elle change d’une page à l’autre, le prospect décroche, même si chaque page est bien écrite.
+	SI C’EST BAS, REGARDE ICI
+Symptôme
+	Cause probable
+	Beaucoup de clics, peu d’opt-ins
+	Le titre ne reconnaît pas la situation en 3 secondes, ou mélange deux peurs
+	Opt-in correct, quiz abandonné
+	Le haut du quiz contredit ce qui a été promis au clic
+	Quiz complété, personne ne regarde la VSL
+	La page Thank You dit « vérifie tes courriels » au lieu d’afficher la vidéo
+	VSL regardée, peu de bookings automatiques
+	L’offre de consultation ne donne pas envie (appel générique au lieu d’une consultation nommée, avec durée et valeur en dollars), ou la vidéo est trop longue ou pas assez convaincante
+	Call bookée, personne ne se présente
+	La séquence de rappels est incomplète ou le mini devoir est absent
+	
+
+À RETENIR
+La page Thank You porte la moitié du poids de conversion du funnel. Ce n’est pas un simple merci : c’est la vraie page de vente. Si un seul endroit mérite une relecture, c’est celui-là.
+	Zone 3 — Le Processus de vente
+Une fois le lead dans le CRM, tout se lit dans la feuille KPI que tu révises à chaque 1:1. Sépare les calls bookés en deux sources : booking automatique (funnel) et prospection manuelle (tes rappels). Tu vois tout de suite si le trou est dans le funnel ou dans le suivi.
+Indicateur
+	Où il se lit
+	Cible
+	Réponses
+	Statuts Projet, Book un call ou Pas projet
+	40 à 50 % des leads
+	Calls découverte bookés
+	Statut Book un call (auto + manuel)
+	15 à 25 % des leads
+	Show up découverte
+	Calls tenus / calls bookés
+	85 %
+	Qualified rate
+	Pitchs bookés / calls tenus
+	40 à 50 %
+	Show up pitch
+	Pitchs tenus / pitchs bookés
+	85 %
+	Taux de close
+	Clients / pitchs tenus
+	40 %
+	Numéros invalides
+	Statut Numéro invalide
+	25 % max
+	SI C’EST BAS, REGARDE ICI
+Chiffre bas
+	Où regarder
+	Réponses sous 40 %
+	D’abord la saisie des statuts. Ensuite, la cadence : au moins 3 appels en 3 jours, plus 2 à 3 relances texto avec une question bien formulée qui donne envie de répondre
+	Calls bookés sous 15 %
+	La proposition de l’appel : nomme-le, donne-lui une durée et une valeur en dollars, et montre en quoi il aide la personne à régler son problème
+	Show up découverte sous 85 %
+	La séquence de rappels (immédiat, veille 18 h, 2 h avant, 10 min avant) et le mini devoir. Vérifie aussi si l’appel découverte a été bien vendu
+	Qualified rate sous 40 %
+	La qualité de l’appel découverte et la sélection des prospects, puis le quiz en amont
+	Show up pitch sous 85 %
+	La confirmation et le rappel du rendez-vous. Vérifie si le pitch a été bien vendu, ou si la personne était assez qualifiée et engagée : réécoute la conversation du call découverte
+	Taux de close sous 40 %
+	Le pitch lui-même : voir le Playbook Sales Process
+	CAS FRÉQUENTS
+* « J’ai des leads, mais presque pas de réponses. » Confirme d’abord la saisie des statuts. Si le chiffre est réel, le lead a peut-être été attiré par une promesse que l’appel ne tient pas.
+* « Les pitchs se font, mais ça ne close pas. » Confirme que le prospect arrive bien qualifié. Sinon, le trou est dans le pitch : voir le Playbook Sales Process.
+* « Les chiffres étaient bons, puis ont chuté d’un coup. » Repars du haut de la cascade. Une chute brutale a presque toujours une seule cause récente : créatif fatigué, changement sur la landing page ou saisie CRM relâchée.
+________________
+
+
+PARTIE 4
+Le calcul qui garde tout en perspective
+Sur 100 leads en 30 jours, des taux à la cible donnent environ 2 à 3 nouveaux clients pour 1 000 à 2 000 $ de pub.
+Étape
+	Taux
+	Sur 100 leads
+	Réponses
+	40-50 % des leads
+	40 à 50
+	Calls découverte bookés
+	20 % des leads (15-25 %)
+	20
+	Calls découverte tenus
+	85 %
+	17
+	Pitchs bookés
+	40-50 % qualifiés
+	7 à 9
+	Pitchs tenus
+	85 %
+	6 à 7
+	Closes
+	40 %
+	environ 2 à 3
+	C’est le bas de ta cible de lead → close : tes meilleurs clients font mieux.
+Tes cibles financières
+10-20 $
+Coût par lead
+	3-5 %+
+Lead → close
+	300-600 $
+CPA par client
+	10x+
+ROAS
+	
+
+* Coût par lead : jusqu’à 25 $ reste acceptable si le lead → close suit. Ne juge jamais le coût par lead seul : c’est le CPA qui compte.
+* Lead → close : 3 à 5 % et plus, soit 1 client tous les 20 à 33 leads. Sous 2 %, c’est le seuil d’alerte : on ouvre la cascade.
+Deux exemples réels
+Campagne
+	Pub
+	Leads
+	Coût / lead
+	Clients
+	Lead → close
+	CPA
+	Acheteurs
+	1 279,87 $
+	59
+	21,69 $
+	4
+	6,8 %
+	320 $
+	Achat-vente
+	1 191,65 $
+	73
+	16,32 $
+	3
+	4,1 %
+	397 $
+	
+
+CE QUE CES EXEMPLES MONTRENT
+La campagne acheteurs paie ses leads plus cher que le repère de 20 $, mais elle signe un client tous les 15 leads : son CPA est le meilleur des deux.
+	
+
+LES CLOSES TARDIFS
+En immobilier, une partie des leads signe après 30 jours, grâce au follow-up et au nurture. Mesure les closes d’un mois de leads sur 60 à 90 jours : ton CPA réel sera plus bas que celui des 30 premiers jours.
+Ces chiffres sont un point de départ. Après 2 ou 3 mois de feuille KPI bien remplie, tes propres taux deviennent la référence.
+	________________
+
+
+PARTIE 5
+Ta routine et ta checklist
+Le diagnostic tient en quelques minutes par semaine, à condition que la saisie soit faite tous les jours.
+Fréquence
+	Ce que tu fais
+	Après chaque appel (30 sec)
+	Choisir un statut et déplacer la carte
+	Chaque matin (5 à 10 min)
+	Trier les nouveaux leads et les rappels dus
+	Chaque soir (5 min)
+	Revoir les conversations en attente
+	Chaque semaine (10 min)
+	Rappeler les Follow Up (pas close) en priorité, puis le Nurture ; préparer la feuille KPI
+	Au 1:1
+	Comparer la feuille KPI à la semaine précédente, trouver le premier chiffre sous sa cible et choisir UNE action
+	Chaque mois
+	Comparer coût par lead, CTR et conversion clic → lead dans le temps ; renouveler un créatif qui fatigue
+	Checklist avant chaque 1:1
+☐   Chaque appel récent a un statut à jour dans le CRM.
+☐   J’ai trouvé, dans la cascade, la première métrique sous sa cible.
+☐   Je sais dans quelle zone elle se trouve : Marketing, Funnel ou Processus de vente.
+☐   Je ne corrige qu’UN seul élément cette semaine.
+☐   J’ai noté le chiffre d’aujourd’hui pour le comparer la semaine prochaine.
+
+
+EN UNE PHRASE
+Tu n’as pas besoin de retenir chaque chiffre de ce playbook. À chaque 1:1, trouve le premier chiffre sous sa cible, corrige l’élément qu’il pointe, et laisse le système te montrer la semaine suivante si ça a marché.

@@ -1,0 +1,78 @@
+{
+  "results": [
+    {
+      "role": "admin",
+      "viewportWidth": 390,
+      "scroll": 375,
+      "width": 375,
+      "navigation": "passed",
+      "draftsHidden": "not applicable"
+    },
+    {
+      "role": "a",
+      "viewportWidth": 390,
+      "scroll": 390,
+      "width": 390,
+      "navigation": "passed",
+      "draftsHidden": true
+    },
+    {
+      "role": "b",
+      "viewportWidth": 390,
+      "scroll": 390,
+      "width": 390,
+      "navigation": "passed",
+      "draftsHidden": true
+    },
+    {
+      "role": "admin",
+      "viewportWidth": 768,
+      "scroll": 753,
+      "width": 753,
+      "navigation": "passed",
+      "draftsHidden": "not applicable"
+    },
+    {
+      "role": "a",
+      "viewportWidth": 768,
+      "scroll": 768,
+      "width": 768,
+      "navigation": "passed",
+      "draftsHidden": true
+    },
+    {
+      "role": "b",
+      "viewportWidth": 768,
+      "scroll": 768,
+      "width": 768,
+      "navigation": "passed",
+      "draftsHidden": true
+    },
+    {
+      "role": "admin",
+      "viewportWidth": 1280,
+      "scroll": 1265,
+      "width": 1265,
+      "navigation": "passed",
+      "draftsHidden": "not applicable"
+    },
+    {
+      "role": "a",
+      "viewportWidth": 1280,
+      "scroll": 1280,
+      "width": 1280,
+      "navigation": "passed",
+      "draftsHidden": true
+    },
+    {
+      "role": "b",
+      "viewportWidth": 1280,
+      "scroll": 1280,
+      "width": 1280,
+      "navigation": "passed",
+      "draftsHidden": true
+    }
+  ],
+  "consoleErrors": [],
+  "note": "Synthetic browser UI only; not production RLS."
+}
