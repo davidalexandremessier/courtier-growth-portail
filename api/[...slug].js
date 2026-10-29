@@ -29,6 +29,11 @@ const routes={
 
 export const config={maxDuration:300};
 
+// Le catch-all correspond avant les rewrites de vercel.json : ces deux
+// adresses publiques doivent donc être reconnues ici. Le handler OAuth
+// distingue encore le chemin d’origine et le paramètre route.
+const aliases={'agency-oauth':'oauth','wispr-client-metadata':'oauth'};
+
 function segments(req){
  const slug=req.query?.slug;
  if(Array.isArray(slug))return slug.map(String);
@@ -40,7 +45,7 @@ function segments(req){
 }
 
 export default function handler(req,res){
- const parts=segments(req),route=parts.length===1?routes[parts[0]]:undefined;
+ const parts=segments(req),key=parts.length===1?parts[0]:undefined,route=key?routes[aliases[key]||key]:undefined;
  if(!route){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('Content-Type','application/json; charset=utf-8');

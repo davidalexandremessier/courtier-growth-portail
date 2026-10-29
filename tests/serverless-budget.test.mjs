@@ -90,5 +90,13 @@ test('chemin inconnu : JSON 404, et la réécriture OAuth atteint encore son han
   await dispatch({method:'GET',url:'/api/oauth?route=agency',headers:{},query:{slug:['oauth']}},agency);
   assert.equal(agency.statusCode,401);
   assert.equal(agency.body.error,'Connexion requise.');
+  const publicAgency=response();
+  await dispatch({method:'GET',url:'/api/agency-oauth',headers:{},query:{slug:['agency-oauth']}},publicAgency);
+  assert.equal(publicAgency.statusCode,401);
+  assert.equal(publicAgency.body.error,'Connexion requise.');
+  const publicMeta=response();
+  await dispatch({method:'GET',url:'/api/wispr-client-metadata',headers:{},query:{slug:['wispr-client-metadata']}},publicMeta);
+  assert.equal(publicMeta.statusCode,200);
+  assert.equal(publicMeta.body.client_id,'https://portail.example.test/api/wispr-client-metadata');
  }finally{if(prev===undefined)delete process.env.APP_URL;else process.env.APP_URL=prev}
 });
