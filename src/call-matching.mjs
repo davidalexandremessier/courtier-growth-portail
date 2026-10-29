@@ -1,4 +1,4 @@
-export const CENTRAL_GHL_LOCATION='CONFIGURE_CENTRAL_GHL_LOCATION';
+export const CENTRAL_GHL_LOCATION='3dojB6zA4kH0xUBvGzEJ';
 const email=v=>String(v||'').trim().toLowerCase();
 const clean=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 export function instant(v,timeZone){
