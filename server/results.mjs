@@ -5,12 +5,13 @@ import {torontoClock} from '../src/reminders.mjs';
 import {instant} from '../src/call-matching.mjs';
 import {shiftDay} from '../src/kpi.mjs';
 import {connectionRow,connectionToken} from './oauth.mjs';
+import {hasPilotMetaToken,resolvePilotMetaToken} from './meta-token.mjs';
 export const LEAD_SOURCES=['Facebook','fb','Lead vendeur - 5 erreurs baisse prix'];
 export const DISCOVERY_CALENDARS=['Appel Découverte','Rendez-vous - Plan de Match'];
 export const PILOT={clientId:'c986a6e4-c50f-4e31-a591-82708c1a75be',locationId:'TJ8oeC0TBrkBUwqCsv6S',adAccountId:'1639871096506219'};
 export const GHL_ACCOUNTS=[{locationId:PILOT.locationId,clientId:PILOT.clientId,name:'Daniel Kadima',tokenEnv:'GHL_DANIEL_TOKEN',leadSources:LEAD_SOURCES,calendarNames:DISCOVERY_CALENDARS},{locationId:'pnpEvzewr5L5UXgcpCH6',name:'Dylan Desfossés',tokenEnv:'GHL_DYLAN_TOKEN',leadSources:['1. Lead Acheteur - Opt-in'],calendarNames:['01. Zoom Acheteur']},{locationId:'CGu4ygorOZ6V4t1ESfYq',name:'Jessica Gauthier',tokenEnv:'GHL_JESSICA_TOKEN',leadSources:['Funnel Vendeur Form - David-Alexandre Messier'],calendarNames:['Appel Découverte 30 mins (team)','Appel Découverte - Vendeur (Jessica)']}];
 export async function resolveGHLClient(db,clientId){await requireClientCapability(db,clientId,'crm_client');const c=must(await db.from('clients').select('id,name,ghl_location_id').eq('id',clientId).single());const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();if(process.env.OAUTH_STORAGE_READY==='true'){const row=await connectionRow(db,clientId,'ghl');if(row){if(row.account_id!==c.ghl_location_id)throw new CallError('Le compte CRM a changé : reconnectez le dossier.',409);const legacy=GHL_ACCOUNTS.find(a=>a.locationId===row.account_id);return {oauth:true,locationId:row.account_id,accessToken:await connectionToken(db,row),leadSources:row.settings?.leadSources?.length?row.settings.leadSources:legacy?.leadSources||[],calendarNames:row.settings?.calendarNames?.length?row.settings.calendarNames:legacy?.calendarNames||[]}}}const account=GHL_ACCOUNTS.find(a=>a.locationId===c.ghl_location_id&&(a.clientId?c.id===a.clientId:normalize(c.name)===normalize(a.name)));if(!account)throw new CallError('Aucune connexion GHL/Ava autorisée pour ce dossier et ce sous-compte.',409);return account;}
-export function resultsStatus(){return {ghl:!!process.env.GHL_DANIEL_TOKEN,meta:!!process.env.META_DANIEL_TOKEN,pilotClientId:PILOT.clientId}}
+export function resultsStatus(){return {ghl:!!process.env.GHL_DANIEL_TOKEN,meta:hasPilotMetaToken(),pilotClientId:PILOT.clientId}}
 async function read(url,headers,options={}){
  let res;try{res=await fetch(url,{...options,headers,redirect:'error',signal:AbortSignal.timeout(15000)})}catch{throw new CallError('Lecture fournisseur indisponible. Réessayez plus tard.',502)}
  if(!res.ok){const u=new URL(url),meta=u.hostname==='graph.facebook.com',endpoint=u.pathname.endsWith('/insights')?'insights':'ad-account',status=meta?await metaFailure(res,endpoint):'HTTP '+res.status;throw new CallError('Lecture refusée par '+(meta?'Meta':'GHL')+' ('+status+'). Vérifiez les droits de lecture.',502)}
@@ -69,7 +70,7 @@ export async function inspectGHL(account=GHL_ACCOUNTS[0]){
  const days=configurationPending?[]:presence.map(d=>({day:d.day,leads:d.day===to?null:qualified.days[d.day]||0,appointments_due:d.review?null:d.appointments_due,attended:d.review?null:d.attended,review:d.review}));
  return {provider:'ghl',canConfigure:!!account.oauth,verifiedAt:new Date().toISOString(),locationId:locationId,from,to,contacts:contactOverview(contacts,from,to),configurationPending,qualifiedLeads:leadSources.length?qualified.count:null,leadSources,discoveryCalendars:calendarNames,days,calendars:cal.calendars.map(c=>({id:c.id,name:c.name})),pipelines:pipes.pipelines.map(p=>({id:p.id,name:p.name,stages:(p.stages||[]).map(s=>({id:s.id,name:s.name}))}))};
 }
-export async function inspectMeta(account={adAccountId:PILOT.adAccountId,accessToken:process.env.META_DANIEL_TOKEN}){
+export async function inspectMeta(account={adAccountId:PILOT.adAccountId,accessToken:resolvePilotMetaToken()}){
  if(!account.accessToken)throw new CallError('Accès Meta à autoriser.',409);
  const headers={Authorization:'Bearer '+account.accessToken},base='https://graph.facebook.com/v24.0/act_'+account.adAccountId;
  const metaAccount=await read(base+'?fields=id,name,currency,timezone_name',headers);
@@ -82,4 +83,4 @@ export async function inspectMeta(account={adAccountId:PILOT.adAccountId,accessT
  return {provider:'meta',verifiedAt:new Date().toISOString(),account:{id:account.adAccountId,name:metaAccount.name,currency:metaAccount.currency,timezone:metaAccount.timezone_name},from,to,days};
 }
 
-export async function resolveMetaClient(db,clientId){if(process.env.OAUTH_STORAGE_READY==='true'){const row=await connectionRow(db,clientId,'meta');if(row){const c=must(await db.from('clients').select('meta_ad_account_id').eq('id',clientId).single());if(c.meta_ad_account_id!==row.account_id)throw new CallError('Compte publicitaire modifié : reconnectez le dossier.',409);return {adAccountId:row.account_id,accessToken:await connectionToken(db,row)}}}await assertPilot(db,clientId);return {adAccountId:PILOT.adAccountId,accessToken:process.env.META_DANIEL_TOKEN}}
+export async function resolveMetaClient(db,clientId){if(process.env.OAUTH_STORAGE_READY==='true'){const row=await connectionRow(db,clientId,'meta');if(row){const c=must(await db.from('clients').select('meta_ad_account_id').eq('id',clientId).single());if(c.meta_ad_account_id!==row.account_id)throw new CallError('Compte publicitaire modifié : reconnectez le dossier.',409);return {adAccountId:row.account_id,accessToken:await connectionToken(db,row)}}}await assertPilot(db,clientId);return {adAccountId:PILOT.adAccountId,accessToken:resolvePilotMetaToken()}}
