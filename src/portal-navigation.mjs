@@ -2,7 +2,7 @@ import {offerKey,hasCapability,pageAllowed} from './entitlements.mjs';
 export function dossierSidebarGroups(offer,{admin=false}={}){
  return [
   ['Parcours',[['onboarding','check','Mon parcours'],['campaign-hub','chart','Campagne'],['production','check','Créations'],['leads97','people','Prospects']]],
-  ['Suivi',[['tasks','check','Mes tâches'],['kpi','chart','Mes chiffres'],['weekly','chart','Bilan de semaine'],['team','people','Mon équipe'],['coachings','clock','Rendez-vous'],['preparation','clock','Préparer un appel']]],
+  ['Suivi',[['acheteurs','people','Acheteurs'],['tasks','check','Mes tâches'],['kpi','chart','Mes chiffres'],['weekly','chart','Bilan de semaine'],['team','people','Mon équipe'],['coachings','clock','Rendez-vous'],['preparation','clock','Préparer un appel']]],
   ['Échanges',[['messages','chat','Messages'],['announcements','chat','Annonces'],['help','chat','Demander de l’aide']]],
   ['Ressources et réglages',[['resources','link','Mes ressources'],['preferences','settings','Paramètres'],['notifications','clock','Historique'],['offer-suite','people','Accompagnements']]]
  ].map(([label,items])=>[label,items.filter(([page])=>pageAllowed(offer,page,{admin}))]).filter(([,items])=>items.length);
@@ -11,10 +11,11 @@ export const focusDestinations=[['dashboard','chart','Résultats'],['action-hub'
 export const clientDestinations=[
  ['dashboard','grid','Vue d’ensemble'],['onboarding','check','Mon parcours'],['action-hub','check','À faire'],
  ['kpi','chart','Mes résultats'],['coachings','clock','Rendez-vous'],['messages','chat','Messages'],
- ['resources','link','Mes ressources'],['preferences','settings','Paramètres']
+ ['resources','link','Mes ressources'],['preferences','settings','Paramètres'],['acheteurs','people','Acheteurs']
 ];
+export const deepLinkPages=['preferences','dashboard','kpi','tasks','coachings','onboarding','production','campaign97','leads97','offer-suite','messages','announcements','team','notifications','help','followup','acheteurs'];
 export function destinationsFor(){return clientDestinations}
-export function clientSectionFor(page){if(['diagnostic','data-hub'].includes(page))return page;
+export function clientSectionFor(page){if(page==='acheteurs')return 'acheteurs';if(['diagnostic','data-hub'].includes(page))return page;
  if(['onboarding','production','campaign97','campaign-hub','leads97'].includes(page))return 'onboarding';
  if(['action-hub','tasks'].includes(page))return 'action-hub';
  if(['kpi','weekly','team'].includes(page))return 'kpi';

@@ -1,3 +1,4 @@
+import {publicBuyerHtml,v2BuyersHtml,buyerActivity,loadBuyerCockpit} from '../buyer-cockpit.mjs';
 import {metaPanel} from './meta-panel.mjs';
 import {createClient} from '@supabase/supabase-js';
 import {offerDescriptions,offerKey} from '../entitlements.mjs';
@@ -7,7 +8,7 @@ const frag=new URLSearchParams(location.hash.slice(1)),ACT={token:frag.get('invi
 const OFFERS=[['Campagne 97 $',offerDescriptions['97'].label],['Groupe',offerDescriptions.group.label],['1:1',offerDescriptions.individual.label]];
 
 const TODAY=torontoToday(),WEEKS=recentWeeks(TODAY,8);
-const st={recovery:false,oauth:{},sb:null,user:null,admin:false,clients:[],clientId:null,page:'follow',week:WEEKS[1],meeting:null,member:null,editing:null,message:'',error:'',d:null,agency:null,agencyOAuth:null,meetingQueue:null};
+const st={recovery:false,oauth:{},sb:null,user:null,admin:false,clients:[],clientId:null,page:'follow',week:WEEKS[1],meeting:null,member:null,editing:null,message:'',error:'',d:null,agency:null,agencyOAuth:null,meetingQueue:null,buyerCockpit:null};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const tz={timeZone:'America/Toronto'};
@@ -36,6 +37,7 @@ const due=d=>d?(d<TODAY?`<span class="late">En retard, prévu le ${fmt(d)}</span
 const owner=t=>chip(isClientOwner(t.owner)?'ink':'gold',isClientOwner(t.owner)?(st.admin?'Client':'Vous'):'David');
 
 async function boot(){
+  const buyerLink=QS.get('acheteur');if(buyerLink) return showBuyer(buyerLink);
   try{const r=await fetch('/api/config');const c=await r.json();if(!c.configured)return fatal('Le portail n’est pas encore relié à sa base.');st.sb=createClient(c.url,c.key);st.recovery=c.emailRecoveryEnabled===true}catch{return fatal('Connexion au portail impossible. Réessayez dans un instant.')}
   if(ACT.token){const {error}=await st.sb.auth.verifyOtp({token_hash:ACT.token,type:ACT.type});if(error)return login('login','Lien expiré ou déjà utilisé. Demandez un nouveau lien à David.');return login('reset')}
   const {data:{session}}=await st.sb.auth.getSession();if(!session)return login();if(ACT.flow)return login('reset');await signedIn();
@@ -57,8 +59,16 @@ async function signedIn(){
   const r=await st.sb.rpc('is_admin');st.admin=r.data===true;
   const c=await st.sb.from('clients').select('id,name,email,offer,status,work_mode,crm_url,meta_ad_account_id').order('name');if(c.error)return fatal('Lecture du dossier impossible.');st.clients=c.data||[];
   if(st.admin){st.page='agency';await loadAgency()}else{if(!st.clients.length)return fatal('Aucun dossier n’est encore relié à ce compte. Écrivez à David.');st.clientId=st.clients[0].id;await loadClient()}
+  if(QS.get('page')==='acheteurs'){st.page='acheteurs';await loadBuyers()}
   render();if(OAUTH.pending||OAUTH.error)await resumeOAuth();if(st.admin&&(OAUTH.agency||OAUTH.agencyError)){st.page='connections';st.error=OAUTH.agencyError||'';OAUTH.agency=null;OAUTH.agencyError=null;render()}
 }
+async function showBuyer(token){
+  let meta=document.querySelector('meta[name=robots]');if(!meta){meta=document.createElement('meta');meta.name='robots';document.head.append(meta)}meta.content='noindex';
+  $('#app').innerHTML=publicBuyerHtml({loading:true});
+  try{const r=await fetch('/api/ghl-webhook/buyer-cockpit?token='+encodeURIComponent(token),{headers:{Accept:'application/json'}});const data=await r.json().catch(()=>({}));$('#app').innerHTML=r.ok?publicBuyerHtml({brokerName:data.broker_name,contactName:data.contact_name,coups:data.coups_de_coeur||[]}):publicBuyerHtml({error:data.error||'Ce lien n’est plus valide.'})}
+  catch{$('#app').innerHTML=publicBuyerHtml({error:'Connexion impossible. Réessayez dans un instant.'})}
+}
+async function loadBuyers(){st.buyerCockpit=await loadBuyerCockpit({sb:st.sb,demo:false,clientId:st.clientId});if(st.admin&&st.sb){const access=await st.sb.from('buyer_portal_access').select('client_id,contact_id,revoked_at');st.buyerAccess=access.error?[]:access.data||[]}else st.buyerAccess=[]}
 async function loadClient(){
   const cid=st.clientId,since=shiftDay(WEEKS.at(-1),-28),sb=st.sb;
   const [w,t,c,m,tr,sourceRows]=await Promise.all([
@@ -79,14 +89,14 @@ async function loadAgency(){
 
 function shell(body){
   const team=!st.admin&&st.d?.members?.length;
-  const tabs=st.admin?[['agency','Clients'],['connections','Connexions']]:[['follow','Mon suivi'],['meetings','Rencontres'],...(team?[['team','Équipe']]:[])];
+  const tabs=st.admin?[['agency','Clients'],['acheteurs','Acheteurs'],['connections','Connexions']]:[['follow','Mon suivi'],['acheteurs','Acheteurs'],['meetings','Rencontres'],...(team?[['team','Équipe']]:[])];
   const cur=id=>st.page===id||(id==='follow'&&st.page==='numbers')||(id==='agency'&&st.admin&&['follow','numbers','meetings','team','access'].includes(st.page));
   $('#app').innerHTML=`<header class="top"><div class="brand">Courtier<span>Growth</span></div><nav class="tabs" aria-label="Navigation principale">${tabs.map(([id,l])=>`<button type="button" data-page="${id}" ${cur(id)?'aria-current="page"':''}>${l}</button>`).join('')}</nav><button type="button" class="avatar" data-page="profile" aria-label="Profil et outils">${esc(initials(st.admin?'David A':client()?.name))}</button></header>
   <main class="main" id="main" tabindex="-1">${st.message?`<div class="toast" role="status">${esc(st.message)}</div>`:''}${st.error?`<div class="error" role="alert">${esc(st.error)}</div>`:''}${body}</main><dialog id="dialog" aria-labelledby="dialog-title"></dialog>`;
   bind();document.querySelectorAll('[data-w]').forEach(e=>e.style.width=e.dataset.w+'%');document.querySelectorAll('[data-l]').forEach(e=>e.style.left=e.dataset.l+'%');
 }
 const weekPicker=()=>`<label class="week"><span class="sr">Semaine</span><select id="week">${WEEKS.map(w=>`<option value="${w}" ${st.week===w?'selected':''}>Semaine du ${fmt(w)} au ${fmt(shiftDay(w,6))}${w===WEEKS[0]?' (en cours)':''}</option>`).join('')}</select></label>`;
-const crumb=()=>st.admin?`<p class="crumb">${btn('‹ Clients à suivre','page:agency','link')}</p><nav class="pills" aria-label="Dossier de ${esc(client()?.name)}">${[['follow','Suivi'],['numbers','Chiffres'],['meetings','Rencontres'],...(st.d?.members?.length?[['team','Équipe']]:[]),['access','Accès']].map(([id,l])=>`<button type="button" data-act="page:${id}" ${st.page===id?'aria-current="page"':''}>${l}</button>`).join('')}</nav>`:'';
+const crumb=()=>st.admin?`<p class="crumb">${btn('‹ Clients à suivre','page:agency','link')}</p><nav class="pills" aria-label="Dossier de ${esc(client()?.name)}">${[['follow','Suivi'],['numbers','Chiffres'],['meetings','Rencontres'],['acheteurs','Acheteurs'],...(st.d?.members?.length?[['team','Équipe']]:[]),['access','Accès']].map(([id,l])=>`<button type="button" data-act="page:${id}" ${st.page===id?'aria-current="page"':''}>${l}</button>`).join('')}</nav>`:'';
 
 function kpiRow(k){const max=k.max??1,zoneL=k.inverse?0:k.low/max*100,zoneW=k.inverse?k.low/max*100:((k.high??max)-k.low)/max*100,bar=k.rate==null?0:Math.max(2,Math.min(100,k.rate/max*100));
   const val=k.rate==null?'—':k.money?money(k.rate):pct(k.rate);const det=`${k.money?money(k.n):num(k.n)} ${k.money?'pour':'sur'} ${num(k.d)} ${k.denLabel}`;
@@ -198,9 +208,11 @@ async function assignMeetingGroup(index){const group=st.meetingQueue?.groups?.[N
 async function summaryDraft(id){try{const r=await api('/api/calls',{action:'summarize',coachingId:id});const input=$('#coach-form textarea[name="summary"]');if(input)input.value=r.text;st.message='Résumé proposé : relisez-le, puis enregistrez. Aucune publication automatique.';const note=$('#coach-error');if(note)note.textContent=st.message}catch(e){const note=$('#coach-error');if(note)note.textContent=e.message}}
 async function agencyAction(action,provider,revision){try{const r=await api('/api/agency-oauth',{action,provider,...(revision?{revision:Number(revision)}:{}),...(action==='import'?(provider==='wispr'?{from:($('#wispr-from')?.value||'')+'T00:00:00Z',to:($('#wispr-to')?.value||'')+'T23:59:59Z'}:{from:$('#zoom-from')?.value,to:$('#zoom-to')?.value}):{})});if(action==='import'){st.meetingQueue=null;st.message=`${r.imported||0} source(s) traitée(s), ${(r.reviewRequired||[]).length} source(s) complémentaire(s) à relire, ${(r.sourceRetry||[]).length} à réessayer. ${(r.errors||[]).length?(r.errors.length+' rencontre(s) Wispr illisible(s). '):''}${r.partial?'Lecture Wispr partielle. ':''}${(r.discoveryWarnings||[]).length?'Lecture Zoom partielle : une liste est indisponible; vérifiez les droits et réessayez. ':''}Aucune publication.`;await loadMeetingQueue();render();return}if(action==='catalogue'){st.message=`Catalogue reçu : ${(r.tools||[]).length} outils. Mapping à vérifier avant import; aucune rencontre importée.`;render();return}if(action==='start'){const u=new URL(r.url);if(u.protocol!=='https:'||u.hostname!==(provider==='zoom'?'zoom.us':'mcp-auth.wisprflow.com'))throw Error('Adresse OAuth invalide.');location.assign(u.href);return}st.agencyOAuth=null;st.message=action==='disconnect'?'Accès du portail arrêté. Le consentement fournisseur reste à révoquer dans votre compte.':'Compte confirmé; import encore non validé.';await loadAgencyOAuth()}catch(e){st.error=e.message;render()}}
 
-function render(){const p=st.page;shell(p==='agency'?agency():p==='connections'?connections():p==='numbers'?numbers():p==='meetings'?meetings():p==='team'?teamPage():p==='profile'?profile():p==='access'?accessPage():follow());
+function acheteursPage(){const pack=st.buyerCockpit||{events:[],unavailable:true,missing:false};const buyers=buyerActivity(pack.events,{admin:st.admin,clientId:st.clientId,clients:st.clients});return `${st.admin&&client()?crumb():''}`+v2BuyersHtml(buyers,{unavailable:pack.unavailable,missing:pack.missing,admin:st.admin,access:st.buyerAccess||[]})}
+function render(){const p=st.page;shell(p==='agency'?agency():p==='connections'?connections():p==='numbers'?numbers():p==='meetings'?meetings():p==='team'?teamPage():p==='profile'?profile():p==='access'?accessPage():p==='acheteurs'?acheteursPage():follow());
   if(st.editing){const d=$('#dialog');d.className='sheet';d.innerHTML=form(st.editing);$('#week-form').onsubmit=submitWeek;d.querySelector('[data-act="cancel"]').onclick=()=>{st.editing=null;d.close()};d.onclose=()=>{st.editing=null};d.showModal();d.querySelector('input')?.focus()}}
-async function go(p){st.page=p;st.meeting=null;st.member=null;st.message='';st.error='';if(p==='agency')await loadAgency();render();scrollTo?.(0,0);$('#main')?.focus()}
+async function go(p){st.page=p;st.meeting=null;st.member=null;st.message='';st.error='';if(p==='agency')await loadAgency();if(p==='acheteurs')await loadBuyers();render();scrollTo?.(0,0);$('#main')?.focus()}
+async function revokeBuyer(clientId, contactId, restore){if(!st.admin) return;const {error}=await st.sb.from('buyer_portal_access').update({revoked_at:restore?null:new Date().toISOString()}).eq('client_id', clientId).eq('contact_id', contactId);if(error){st.error='La révocation du lien a échoué.';render();return}st.message=restore?'Lien acheteur réactivé.':'Lien acheteur révoqué. Le même lien reste inactif.';await loadBuyers();render()}
 async function setProgress(id,status,blocked,note){const {error}=await st.sb.rpc('set_task_progress',{task_id:id,new_status:status,is_blocked:blocked,note:note||null});if(error)return /note/i.test(error.message)?'Ajoutez un mot : ce qui bloque, ou ce qui a été fait.':'Mise à jour impossible pour cette action.';await loadClient();st.message=status==='Terminé'?'Bravo, action marquée comme faite.':blocked?'Blocage signalé à David.':'Action mise à jour.';render();return null}
 function taskDialog(t,preset){const d=$('#dialog');d.className='';const status=preset==='done'?'Terminé':t.status,blocked=preset==='block'?true:preset==='done'?false:!!t.blocked;
   d.innerHTML=`<div class="section-head"><h2 id="dialog-title">Mettre à jour l’action</h2><button type="button" class="secondary" id="close-dialog">Fermer</button></div><p><strong>${esc(t.title)}</strong></p><form id="task-form" class="stack"><fieldset class="status"><legend>Où en êtes-vous ?</legend>${['À faire','En cours','Terminé'].map(s=>`<label><input type="radio" name="status" value="${s}" ${s===status?'checked':''}> ${s==='Terminé'?'C’est fait':s}</label>`).join('')}</fieldset><label class="inline"><input type="checkbox" name="blocked" ${blocked?'checked':''}> Je suis bloqué</label><label>Un mot pour David (obligatoire si bloqué ou fait)<textarea name="note" rows="3" maxlength="500">${esc(t.blocker_note||'')}</textarea></label><div id="task-error" role="alert"></div><button class="primary" type="submit">Enregistrer l’action</button></form>`;
@@ -245,6 +257,7 @@ async function act(a){
   else if(a.startsWith('summary-draft:'))await summaryDraft(a.slice(14));
   else if(a.startsWith('agency-')){const [action,provider,revision]=a.split(':');await agencyAction(action.slice(7),provider,revision)}
   else if(a.startsWith('edit:')){st.editing=a.slice(5);render()}
+  else if(a.startsWith('revoke-buyer:')){const rest=a.slice('revoke-buyer:'.length),cut=rest.indexOf(':');const button=[...document.querySelectorAll('[data-revoke]')].find(el=>el.dataset.act===a);await revokeBuyer(decodeURIComponent(rest.slice(0,cut)),decodeURIComponent(rest.slice(cut+1)),button?.dataset.revoke==='restore')}
   else if(a.startsWith('page:'))await go(a.slice(5));
   else if(a.startsWith('done:')||a.startsWith('block:')){const t=st.d.tasks.find(x=>x.id===a.split(':')[1]);if(t)taskDialog(t,a.split(':')[0])}
   else if(a.startsWith('task:')){const t=st.d.tasks.find(x=>x.id===a.slice(5));if(t)taskDialog(t)}
