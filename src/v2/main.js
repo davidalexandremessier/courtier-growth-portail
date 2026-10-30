@@ -2,13 +2,14 @@ import {metaPanel} from './meta-panel.mjs';
 import {createClient} from '@supabase/supabase-js';
 import {offerDescriptions,offerKey} from '../entitlements.mjs';
 import {ADDONS,BILAN_TAG,LINK_FIELDS,LINK_PLACEHOLDERS,TICKET_STATUSES,TICKET_STATUS_LABELS,WAITLIST_STATUSES,WAITLIST_STATUS_LABELS,answerQuestion,formatToronto,joinWaitlist,normalizeTags,portalHttpsUrl,sprint97Cards,supportCardHtml,tableMissing,ticketDraft,ticketUpdate,waitlistUpdate} from '../sprint97-portal.mjs';
+import {readPortalEntry,rememberDeepLink,resolveDeepLink,takeDeepLink} from '../deep-link.mjs';
 import {salesFields,metaFields,crmFields,fromRow,toRow,recentWeeks,torontoToday,shiftDay,parseCount,validate,salesKpis,metaKpis,crmKpis,kpis,reading,teamWeek,sumWeeks,isClientOwner,openTasks,triage} from './metrics.mjs';
 
-const frag=new URLSearchParams(location.hash.slice(1)),ACT={token:frag.get('invite')||frag.get('recovery')||'',type:frag.has('invite')?'invite':'recovery',flow:/type=(invite|recovery)/.test(location.hash)};const QS=new URLSearchParams(location.search),OAUTH={pending:QS.get('oauth_pending'),error:QS.get('oauth_error'),agency:QS.get('agency_oauth'),agencyError:QS.get('agency_error')};if(ACT.token||ACT.flow||OAUTH.pending||OAUTH.error||OAUTH.agency||OAUTH.agencyError)history.replaceState(null,'',location.pathname);
+const ENTRY=readPortalEntry(location.pathname,location.search,location.hash),ACT=ENTRY.auth,OAUTH=ENTRY.oauth;let pendingDeepPage=ENTRY.page||'';if(ENTRY.page){try{rememberDeepLink(sessionStorage,ENTRY.page)}catch{}}if(ENTRY.rewrite)history.replaceState(null,'',ENTRY.rewrite);
 const OFFERS=[['Campagne 97 $',offerDescriptions['97'].label],['Groupe',offerDescriptions.group.label],['1:1',offerDescriptions.individual.label]];
 
 const TODAY=torontoToday(),WEEKS=recentWeeks(TODAY,8);
-const st={recovery:false,oauth:{},sb:null,user:null,admin:false,clients:[],clientId:null,page:'follow',week:WEEKS[1],meeting:null,member:null,editing:null,message:'',error:'',d:null,agency:null,agencyOAuth:null,meetingQueue:null,sprint97:null,sprint97Admin:null,supportResult:null,supportPending:''};
+const st={recovery:false,oauth:{},sb:null,user:null,admin:false,clients:[],clientId:null,page:'follow',week:WEEKS[1],meeting:null,member:null,editing:null,message:'',error:'',d:null,agency:null,agencyOAuth:null,meetingQueue:null,sprint97:null,sprint97Admin:null,supportResult:null,supportPending:'',deepFocus:''};
 let sprintBusy=false;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -59,7 +60,20 @@ async function signedIn(){
   const r=await st.sb.rpc('is_admin');st.admin=r.data===true;
   const c=await st.sb.from('clients').select('id,name,email,offer,status,work_mode,crm_url,meta_ad_account_id').order('name');if(c.error)return fatal('Lecture du dossier impossible.');st.clients=c.data||[];
   if(st.admin){st.page='agency';await loadAgency()}else{if(!st.clients.length)return fatal('Aucun dossier n’est encore relié à ce compte. Écrivez à David.');st.clientId=st.clients[0].id;await loadClient()}
-  render();if(OAUTH.pending||OAUTH.error)await resumeOAuth();if(st.admin&&(OAUTH.agency||OAUTH.agencyError)){st.page='connections';st.error=OAUTH.agencyError||'';OAUTH.agency=null;OAUTH.agencyError=null;render()}
+  const oauthNow=!!(OAUTH.pending||OAUTH.error||(st.admin&&(OAUTH.agency||OAUTH.agencyError)));
+  if(!oauthNow)await applyDeepLink();
+  render();
+  if(st.deepFocus)document.getElementById(st.deepFocus)?.scrollIntoView({block:'start'});
+  if(OAUTH.pending||OAUTH.error)await resumeOAuth();if(st.admin&&(OAUTH.agency||OAUTH.agencyError)){st.page='connections';st.error=OAUTH.agencyError||'';OAUTH.agency=null;OAUTH.agencyError=null;render()}
+}
+async function applyDeepLink(){
+ let requested=pendingDeepPage;pendingDeepPage='';
+ try{requested=takeDeepLink(sessionStorage,requested)||''}catch{requested=requested||''}
+ if(!requested)return;
+ const resolved=resolveDeepLink(requested,{offer:client()?.offer,admin:st.admin});
+ const needsClient=['follow','numbers','leads97','help','meetings','team','profile','access'].includes(resolved.page);
+ if(needsClient){if(!st.clientId)st.clientId=st.clients[0]?.id||null;if(st.clientId&&!st.d)await loadClient();if(!st.d){st.page=st.admin?'agency':'follow';st.deepFocus='';return}}
+ st.page=resolved.page;st.deepFocus=resolved.focus||'';
 }
 async function loadClient(){
   const cid=st.clientId,since=shiftDay(WEEKS.at(-1),-28),sb=st.sb;
@@ -108,7 +122,7 @@ async function loadAgency(){
 function shell(body){
   const team=!st.admin&&st.d?.members?.length;
   const tabs=st.admin?[['agency','Clients'],['connections','Connexions'],['sprint97','Sprint 97']]:[['follow','Mon suivi'],['meetings','Rencontres'],...(team?[['team','Équipe']]:[])];
-  const cur=id=>st.page===id||(id==='follow'&&st.page==='numbers')||(id==='agency'&&st.admin&&['follow','numbers','meetings','team','access'].includes(st.page));
+  const cur=id=>st.page===id||(id==='follow'&&['numbers','help','leads97'].includes(st.page))||(id==='agency'&&st.admin&&['follow','numbers','help','leads97','meetings','team','access'].includes(st.page));
   const support=!st.admin&&offerKey(client()?.offer)==='97'?supportCardHtml({tickets:st.sprint97?.tickets||[],result:st.supportResult}):'';
   $('#app').innerHTML=`<header class="top"><div class="brand">Courtier<span>Growth</span></div><nav class="tabs" aria-label="Navigation principale">${tabs.map(([id,l])=>`<button type="button" data-page="${id}" ${cur(id)?'aria-current="page"':''}>${l}</button>`).join('')}</nav><button type="button" class="avatar" data-page="profile" aria-label="Profil et outils">${esc(initials(st.admin?'David A':client()?.name))}</button></header>
   <main class="main" id="main" tabindex="-1">${st.message?`<div class="toast" role="status">${esc(st.message)}</div>`:''}${st.error?`<div class="error" role="alert">${esc(st.error)}</div>`:''}${body}${support}</main><dialog id="dialog" aria-labelledby="dialog-title"></dialog>`;
@@ -143,7 +157,8 @@ function tasksCard(){const all=st.d.tasks,open=openTasks(all,st.clientId),done=a
 const share=(n,d)=>n!=null&&d?` · ${Math.round(n/d*100)} %`:'';
 function summaryTiles(v){v=v||{};return `<div class="tiles summary">${tile(num(v.leads),'leads reçus')}${tile(num(v.responses),'ont répondu'+share(v.responses,v.leads))}${tile(num(v.booked),'rendez-vous'+share(v.booked,v.leads))}${tile(num(v.signed),'contrats signés')}</div>`}
 function follow(){const c=client(),w=week();
-  return `${crumb()}<div class="head"><h1>${st.admin?esc(c.name):'Bonjour '+esc(first(c.name))}</h1>${weekPicker()}</div>${summaryTiles(w?.values)}<div class="grid"><div class="col">${rail()}</div><div class="col">${kpiCard('Mes KPI face aux repères',w?.values?.leads!=null?`Calculés sur vos ${num(w.values.leads)} leads de la semaine.`:'Entrez vos chiffres pour voir vos repères.',kpis(w?.values,salesKpis))}${btn('Voir le détail de mes chiffres','page:numbers','link')}${coachNote()}${tasksCard()}</div></div>${sprint97Home()}`}
+  return `${crumb()}<div class="head"><h1>${st.admin?esc(c.name):'Bonjour '+esc(first(c.name))}</h1>${weekPicker()}</div>${summaryTiles(w?.values)}<div class="grid"><div class="col">${rail()}</div><div class="col">${kpiCard('Mes KPI face aux repères',w?.values?.leads!=null?`Calculés sur vos ${num(w.values.leads)} leads de la semaine.`:'Entrez vos chiffres pour voir vos repères.',kpis(w?.values,salesKpis))}${btn('Voir le détail de mes chiffres','page:numbers','link')}${coachNote()}${tasksCard()}</div></div>${sprint97Decisions()}${sprint97Home()}`}
+function sprint97Decisions(){if(st.admin||offerKey(client()?.offer)!=='97')return '';const noted=key=>st.tagNotes?.[key]?'<p class="small">C’est noté.</p>':'';return `<section class="card sprint97-card" data-card="sprint97-actions"><p class="kicker">TES CONFIRMATIONS</p><h2>Clarification et aperçus</h2><p>Ces boutons notent ta réponse sur ta fiche. Rien n’est envoyé par texto ou par courriel.</p><div class="sprint97-actions">${btn('J’ai clarifié','tag:clarif-ok','secondary')}${noted('clarif-ok')}${btn('J’approuve les aperçus','tag:apercus-ok','secondary')}${noted('apercus-ok')}${btn('Je demande une correction','tag:apercus-correction','secondary')}${noted('apercus-correction')}</div></section>`}
 function sprint97Home(){if(offerKey(client()?.offer)!=='97'||!st.sprint97?.ready)return '';const cards=sprint97Cards({offer:client().offer,tags:st.sprint97.tags,links:st.sprint97.links,waitlist:st.sprint97.waitlist,clientId:st.clientId});return cards.resources||cards.suite?`<div class="sprint97-home">${cards.resources}${cards.suite}</div>`:''}
 
 const src=w=>w?`<span class="chip green"><i class="dot green"></i>Saisie manuelle, ${fmt(w.updated)}</span>`:'<span class="chip neutral">Aucune saisie</span>';
@@ -228,7 +243,9 @@ async function assignMeetingGroup(index){const group=st.meetingQueue?.groups?.[N
 async function summaryDraft(id){try{const r=await api('/api/calls',{action:'summarize',coachingId:id});const input=$('#coach-form textarea[name="summary"]');if(input)input.value=r.text;st.message='Résumé proposé : relisez-le, puis enregistrez. Aucune publication automatique.';const note=$('#coach-error');if(note)note.textContent=st.message}catch(e){const note=$('#coach-error');if(note)note.textContent=e.message}}
 async function agencyAction(action,provider,revision){try{const r=await api('/api/agency-oauth',{action,provider,...(revision?{revision:Number(revision)}:{}),...(action==='import'?(provider==='wispr'?{from:($('#wispr-from')?.value||'')+'T00:00:00Z',to:($('#wispr-to')?.value||'')+'T23:59:59Z'}:{from:$('#zoom-from')?.value,to:$('#zoom-to')?.value}):{})});if(action==='import'){st.meetingQueue=null;st.message=`${r.imported||0} source(s) traitée(s), ${(r.reviewRequired||[]).length} source(s) complémentaire(s) à relire, ${(r.sourceRetry||[]).length} à réessayer. ${(r.errors||[]).length?(r.errors.length+' rencontre(s) Wispr illisible(s). '):''}${r.partial?'Lecture Wispr partielle. ':''}${(r.discoveryWarnings||[]).length?'Lecture Zoom partielle : une liste est indisponible; vérifiez les droits et réessayez. ':''}Aucune publication.`;await loadMeetingQueue();render();return}if(action==='catalogue'){st.message=`Catalogue reçu : ${(r.tools||[]).length} outils. Mapping à vérifier avant import; aucune rencontre importée.`;render();return}if(action==='start'){const u=new URL(r.url);if(u.protocol!=='https:'||u.hostname!==(provider==='zoom'?'zoom.us':'mcp-auth.wisprflow.com'))throw Error('Adresse OAuth invalide.');location.assign(u.href);return}st.agencyOAuth=null;st.message=action==='disconnect'?'Accès du portail arrêté. Le consentement fournisseur reste à révoquer dans votre compte.':'Compte confirmé; import encore non validé.';await loadAgencyOAuth()}catch(e){st.error=e.message;render()}}
 
-function render(){const p=st.page;shell(p==='agency'?agency():p==='connections'?connections():p==='sprint97'?sprint97AdminPage():p==='numbers'?numbers():p==='meetings'?meetings():p==='team'?teamPage():p==='profile'?profile():p==='access'?accessPage():follow());
+function helpPage(){if(offerKey(client()?.offer)==='97')return `${crumb()}<div class="head"><div><h1>Poser une question</h1><p class="muted">L'assistant répond à partir de la FAQ. S'il ne sait pas, ta question reste dans le portail.</p></div></div>`;return `${crumb()}<div class="head"><div><h1>Aide</h1><p class="muted">Une question sur ton accompagnement? Écris à David. Le portail n'envoie pas de texto.</p></div></div>`}
+function prospectsPage(){if(offerKey(client()?.offer)!=='97')return follow();return `${crumb()}<div class="head"><div><h1>Prospects</h1><p class="muted">Les demandes importées de ta campagne.</p></div></div><section class="card"><h2>Mes demandes</h2><p>Aucune demande importée. L'import des formulaires n'est pas branché : il n'y a pas ici de fiche par personne, ni de champ pour une tentative.</p><p>Pour noter tes tentatives de contact, ouvre Mes chiffres. Le champ <strong>Leads contactés</strong> est le nombre de personnes avec au moins un appel ou un texto cette semaine.</p>${btn('Ouvrir Mes chiffres','page:numbers','secondary')}</section>`}
+function render(){const p=st.page;shell(p==='agency'?agency():p==='connections'?connections():p==='sprint97'?sprint97AdminPage():p==='numbers'?numbers():p==='leads97'?prospectsPage():p==='help'?helpPage():p==='meetings'?meetings():p==='team'?teamPage():p==='profile'?profile():p==='access'?accessPage():follow());
   if(st.editing){const d=$('#dialog');d.className='sheet';d.innerHTML=form(st.editing);$('#week-form').onsubmit=submitWeek;d.querySelector('[data-act="cancel"]').onclick=()=>{st.editing=null;d.close()};d.onclose=()=>{st.editing=null};d.showModal();d.querySelector('input')?.focus()}}
 async function go(p){st.page=p;st.meeting=null;st.member=null;st.message='';st.error='';st.supportResult=null;if(p==='agency')await loadAgency();if(p==='sprint97')await loadSprint97Admin();render();scrollTo?.(0,0);$('#main')?.focus()}
 async function setProgress(id,status,blocked,note){const {error}=await st.sb.rpc('set_task_progress',{task_id:id,new_status:status,is_blocked:blocked,note:note||null});if(error)return /note/i.test(error.message)?'Ajoutez un mot : ce qui bloque, ou ce qui a été fait.':'Mise à jour impossible pour cette action.';await loadClient();st.message=status==='Terminé'?'Bravo, action marquée comme faite.':blocked?'Blocage signalé à David.':'Action mise à jour.';render();return null}
@@ -287,7 +304,7 @@ function sprint97AdminPage(){
   const links=LINK_FIELDS.map(field=>{const row=(data.links||[]).find(item=>item.key===field.key);return `<label>${esc(field.label)}<input name="${esc(field.key)}" type="url" inputmode="url" placeholder="${esc(LINK_PLACEHOLDERS[field.key])}" value="${esc(row?.url||'')}"></label>`}).join('');
   const wait=(data.waitlist||[]).map(row=>`<li class="task"><div><h3>${esc(name(row.client_id))}</h3><p class="small muted">${esc(formatToronto(row.requested_at))} · heure de Toronto</p></div><label class="sprint97-status"><span class="sr">Statut</span><select data-wait="${esc(row.id)}">${WAITLIST_STATUSES.map(status=>`<option value="${status}" ${row.status===status?'selected':''}>${esc(WAITLIST_STATUS_LABELS[status])}</option>`).join('')}</select></label></li>`).join('');
   const tickets=(data.tickets||[]).map(row=>`<li class="task"><form class="stack sprint97-ticket" data-ticket="${esc(row.id)}"><div><h3>${esc(name(row.client_id))}</h3><p>${esc(row.question)}</p><p class="small muted">${esc(formatToronto(row.created_at))}</p></div><label>Statut<select name="status">${TICKET_STATUSES.map(status=>`<option value="${status}" ${row.status===status?'selected':''}>${esc(TICKET_STATUS_LABELS[status])}</option>`).join('')}</select></label><label>Réponse écrite dans le portail<textarea name="reply" maxlength="4000">${esc(row.reply||'')}</textarea></label><button class="secondary" type="submit">Enregistrer la réponse</button></form></li>`).join('');
-  return `<div class="head"><div><h1>Sprint 97 $</h1><p class="muted">Liste d’attente Expansion et questions laissées dans le portail. Aucun courriel ni texto n’est envoyé d’ici.</p></div></div><div class="grid"><div class="col"><section class="card"><h2>Liens</h2><p class="small muted">Laisse le champ vide tant que l’adresse réelle n’existe pas. Le texte d’exemple n’est pas un lien actif.</p><form id="sprint97-links" class="stack">${links}<button class="primary" type="submit">Enregistrer les liens</button></form></section><section class="card"><h2>Liste d’attente Expansion</h2>${wait?`<ul class="list">${wait}</ul>`:'<p class="empty">Personne sur la liste.</p>'}</section></div><div class="col"><section class="card"><h2>Questions à l’équipe</h2>${tickets?`<ul class="list">${tickets}</ul>`:'<p class="empty">Aucune question.</p>'}</section></div></div>`;
+  return `<div class="head"><div><h1>Sprint 97 $</h1><p class="muted">Liste d’attente Expansion et questions laissées dans le portail. Aucun courriel ni texto n’est envoyé d’ici.</p></div></div><div class="grid"><div class="col"><section class="card"><h2>Liens</h2><p class="small muted">Les deux templates restent vides tant que les Google Docs ne sont pas prêts. La candidature Accelerator a déjà son lien : laisse le champ vide pour garder celui-là.</p><form id="sprint97-links" class="stack">${links}<button class="primary" type="submit">Enregistrer les liens</button></form></section><section class="card"><h2>Liste d’attente Expansion</h2>${wait?`<ul class="list">${wait}</ul>`:'<p class="empty">Personne sur la liste.</p>'}</section></div><div class="col"><section class="card"><h2>Questions à l’équipe</h2>${tickets?`<ul class="list">${tickets}</ul>`:'<p class="empty">Aucune question.</p>'}</section></div></div>`;
 }
 function kept(error){return tableMissing(error)||/relation|schema cache|does not exist/i.test(String(error?.message||error||''))}
 async function askSupport(e){
@@ -310,16 +327,41 @@ async function handoffSupport(){
   }catch(error){st.supportResult={error:kept(error)?'L’envoi à l’équipe n’est pas encore disponible. Ta question n’a pas été envoyée, ni par texto ni par courriel.':'Enregistrement impossible. Ta question n’a pas été envoyée.'};render()}
   finally{sprintBusy=false}
 }
+async function markSprintTag(action,{quiet=false}={}){
+ try{const result=await api('/api/ghl-tags',{action,clientId:st.clientId});st.tagNotes={...(st.tagNotes||{}),[action]:result};if(!quiet){st.message='C’est noté.';st.error=''}return result}
+ catch(error){if(!quiet){st.message='';st.error=error.message||'Le marquage n’a pas abouti.'}return null}
+}
 async function joinExpansion(){
+  await Promise.resolve();
   if(sprintBusy||st.admin)return;
-  if(!st.sprint97?.ready){st.error='La liste d’attente n’est pas encore disponible. Rien n’a été envoyé.';render();return}
   sprintBusy=true;
   try{
-    const decision=joinWaitlist(st.sprint97.waitlist,st.clientId,new Date().toISOString());
-    if(!decision.already){const {error}=await st.sb.from('expansion_waitlist').insert(decision.row);if(error)throw error;await loadSprint97(st.clientId)}
-    st.message=decision.already?'Tu es déjà sur la liste d’attente.':'Tu es inscrit sur la liste d’attente.';st.error='';render();
-  }catch{st.error='Inscription impossible. Rien n’a été envoyé par texto ou par courriel.';render()}
-  finally{sprintBusy=false}
+    let recorded=false;
+    if(st.sprint97?.ready){
+      const decision=joinWaitlist(st.sprint97.waitlist||[],st.clientId,new Date().toISOString());
+      if(decision.already)recorded=true;
+      else{const {error}=await st.sb.from('expansion_waitlist').insert(decision.row);recorded=!error}
+    }
+    const tagged=await markSprintTag('expansion-oui',{quiet:true});
+    if(recorded&&tagged){st.message='Tu es inscrit sur la liste d’attente.';st.error=''}
+    else if(tagged){st.message='Le formulaire s’ouvre. L’inscription dans le portail n’est pas encore enregistrée.';st.error=''}
+    else{st.message='';st.error='Le marquage n’a pas abouti. Rien n’a été envoyé par texto ou par courriel.'}
+    if(st.sprint97?.ready)await loadSprint97(st.clientId);
+    render();
+  }finally{sprintBusy=false}
+}
+async function leaveExpansion(){
+  await Promise.resolve();
+  if(sprintBusy||st.admin)return;
+  sprintBusy=true;
+  try{
+    const tagged=await markSprintTag('expansion-retire',{quiet:true});
+    if(st.sprint97?.ready)await loadSprint97(st.clientId);
+    st.message=tagged?'Tu es retiré de la liste d’attente.':'Le retrait n’a pas abouti.';
+    if(!tagged)st.error='Le marquage n’a pas abouti. Rien n’a été envoyé par texto ou par courriel.';
+    else st.error='';
+    render();
+  }finally{sprintBusy=false}
 }
 async function saveSprintLinks(e){
   e.preventDefault();if(!st.admin||sprintBusy)return;sprintBusy=true;
@@ -364,6 +406,8 @@ async function saveFlags(e){
 }
 async function act(a){
   if(a==='waitlist-join')return joinExpansion();
+  if(a==='waitlist-leave')return leaveExpansion();
+  if(a.startsWith('tag:')){await markSprintTag(a.slice(4));render();return}
   if(a==='support-handoff')return handoffSupport();
   if(a.startsWith('group-assign:'))await assignMeetingGroup(a.slice(13));
   else if(a.startsWith('summary-draft:'))await summaryDraft(a.slice(14));

@@ -16,7 +16,7 @@ create table public.portal_links (
 insert into public.portal_links (key, url) values
  ('cg97_lien_template_pub', null),
  ('cg97_lien_template_prospection', null),
- ('lien_app_accelerator', null);
+ ('lien_app_accelerator', 'https://api.leadconnectorhq.com/widget/survey/SGO67W4D6vqxQozBBVsw');
 
 create table public.sprint97_client_state (
  client_id uuid primary key references public.clients(id) on delete cascade,

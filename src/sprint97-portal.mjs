@@ -10,10 +10,15 @@ export const BILAN_TAG='CG97-bilan-livré';
 export const KNOWN_TAGS=[...ADDONS.map(a=>a.tag),BILAN_TAG];
 export const LINK_KEYS={templatePub:'cg97_lien_template_pub',templateProspection:'cg97_lien_template_prospection',accelerator:'lien_app_accelerator'};
 // Affichés seulement comme exemple dans le formulaire admin. Jamais utilisés comme lien cliquable.
+export const GHL_LINKS={
+ accelerator:'https://api.leadconnectorhq.com/widget/survey/SGO67W4D6vqxQozBBVsw',
+ expansion:'https://api.leadconnectorhq.com/widget/form/iDFU2G4kejEYEC5simah',
+ support:'https://api.leadconnectorhq.com/widget/form/HbwL6vW2xmreY7YFQPLz',
+};
 export const LINK_PLACEHOLDERS={
  cg97_lien_template_pub:'https://docs.google.com/document/d/PLACEHOLDER_TEMPLATE_PUB/copy',
  cg97_lien_template_prospection:'https://docs.google.com/document/d/PLACEHOLDER_TEMPLATE_PROSPECTION/copy',
- lien_app_accelerator:'https://portail.courtiergrowth.com/candidature-accelerator-PLACEHOLDER'
+ lien_app_accelerator:GHL_LINKS.accelerator,
 };
 export const LINK_FIELDS=[
  {key:LINK_KEYS.templatePub,label:'Google Doc · template de pub'},
@@ -80,17 +85,13 @@ export function resourcesCardHtml(addons){
   :`<span class="sprint97-pending"><button type="button" class="secondary" disabled>${h(addon.label)}</button><p class="small muted">Lien Google Doc à configurer.</p></span>`).join('');
  return `<section class="card sprint97-card" data-card="resources"><p class="kicker">MES RESSOURCES</p><h2>Tes ajouts, prêts à utiliser</h2><p>Chaque bouton ouvre le Google Doc. Tu peux en faire une copie.</p><div class="sprint97-actions">${buttons}</div></section>`;
 }
+export function acceleratorHref(url){return safeLink(url)||GHL_LINKS.accelerator}
 export function suiteCardHtml({visible,acceleratorUrl,waiting}){
  if(!visible)return '';
- const link=safeLink(acceleratorUrl);
- const accelerator=link
-  ?`<a class="secondary-link" href="${h(link)}" target="_blank" rel="noopener noreferrer">Candidature Accelerator</a>`
-  :`<button type="button" class="secondary" disabled>Candidature Accelerator</button>`;
- const expansion=waiting
-  ?`<p class="sprint97-wait" role="status">Tu es inscrit sur la liste d'attente.</p>`
-  :`<button type="button" class="secondary" data-act="waitlist-join">Liste d'attente Expansion</button>`;
- const missing=link?'':`<p class="small muted">Le lien de candidature Accelerator sera ajouté ici.</p>`;
- return `<section class="card sprint97-card" data-card="suite"><p class="kicker">TA SUITE</p><h2>La suite de ton Sprint</h2><p>Ton Sprint a installé le L. L'Accelerator installe le reste de ton système L.I.S.T. ; l'Expansion en est la version 1:1.</p><div class="sprint97-actions">${accelerator}${expansion}</div>${missing}</section>`;
+ const accelerator=`<a class="secondary-link" href="${h(acceleratorHref(acceleratorUrl))}" target="_blank" rel="noopener noreferrer">Candidature Accelerator</a>`;
+ const expansion=`<a class="secondary-link" href="${h(GHL_LINKS.expansion)}" target="_blank" rel="noopener noreferrer" data-act="waitlist-join">Liste d'attente Expansion</a>`;
+ const status=waiting?`<p class="sprint97-wait" role="status">Tu es inscrit sur la liste d'attente.</p><button type="button" class="secondary" data-act="waitlist-leave">Me retirer de la liste</button>`:'';
+ return `<section class="card sprint97-card" data-card="suite"><p class="kicker">TA SUITE</p><h2>La suite de ton Sprint</h2><p>Ton Sprint a installé le L. L'Accelerator installe le reste de ton système L.I.S.T. ; l'Expansion en est la version 1:1.</p><div class="sprint97-actions">${accelerator}${expansion}</div>${status}</section>`;
 }
 export function sprint97Cards({offer,tags,links,waitlist,clientId}){
  if(offerKey(offer)!=='97')return {resources:'',suite:''};
@@ -106,13 +107,14 @@ export function supportCardHtml({tickets=[],result=null}={}){
  }).join('');
  return `<section class="card sprint97-card" data-card="support" id="poser-une-question"><p class="kicker">SUPPORT</p><h2>Poser une question</h2><p>Un assistant te répond en quelques minutes avec tes données de campagne. S'il ne sait pas, l'équipe te répond ici par écrit en 48 h ouvrables. On ne fait pas de support par texto ni en privé.</p><form id="support-ask"><label>Ta question<textarea name="question" maxlength="2000" required></textarea></label><button class="primary" type="submit">Poser ma question</button></form><div id="support-answer">${resultHtml(result)}</div>${items?`<ul class="list sprint97-tickets">${items}</ul>`:''}</section>`;
 }
+const supportFormLink=()=>`<a class="secondary-link" href="${h(GHL_LINKS.support)}" target="_blank" rel="noopener noreferrer">Ouvrir le formulaire</a>`;
 function resultHtml(result){
  if(!result)return '';
- if(result.saved)return `<div class="support-answer" role="status"><p>${h(HANDOFF_PHRASE)}</p><p>La réponse sera écrite ici, dans le portail.</p></div>`;
+ if(result.saved)return `<div class="support-answer" role="status"><p>${h(HANDOFF_PHRASE)}</p><p>La réponse sera écrite ici, dans le portail.</p>${supportFormLink()}</div>`;
  if(result.error)return `<div class="support-answer" role="alert"><p>${h(result.error)}</p></div>`;
  const answer=result.answer?`<p>${h(result.answer)}</p>`:`<p>Je n'ai pas cette réponse dans la FAQ.</p>`;
  const kind=result.handoff&&!result.answer?'primary':'secondary';
- return `<div class="support-answer">${answer}<button type="button" class="${kind}" data-act="support-handoff">Envoyer ma question à l'équipe</button></div>`;
+ return `<div class="support-answer">${answer}<button type="button" class="${kind}" data-act="support-handoff">Envoyer ma question à l'équipe</button>${supportFormLink()}</div>`;
 }
 
 const STOP=new Set('les des une aux dans pour par sur avec sans que qui quoi elle nous vous mon mes ton tes cet cette ces sont pas plus moins tres tres comme quand comment pourquoi quel quelle quels quelles suis avez fait faire vais aller avoir etre ete du au et ou en un je tu il on ma ta se te me ne ni sa y dont'.split(' '));

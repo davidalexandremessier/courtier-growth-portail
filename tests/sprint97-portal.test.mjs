@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {offerLabel} from '../src/offers.mjs';
 import {
- ADDONS,BILAN_TAG,FAQ,HANDOFF_PHRASE,LINK_KEYS,LINK_PLACEHOLDERS,
+ ADDONS,BILAN_TAG,FAQ,GHL_LINKS,HANDOFF_PHRASE,LINK_KEYS,LINK_PLACEHOLDERS,
  answerQuestion,joinWaitlist,normalizeTags,openWaitlist,portalHttpsUrl,resourcesCardHtml,
  sprint97Cards,suiteCardHtml,supportCardHtml,ticketDraft,visibleAddons,waitlistUpdate
 } from '../src/sprint97-portal.mjs';
@@ -56,7 +56,9 @@ test('Ta suite : après le bilan seulement, sans prix ni places',()=>{
  assert.doesNotMatch(after.suite,/\$|prix|2[\s\u00a0]?000|3[\s\u00a0]?000|4[\s\u00a0]?500|fondateur|rabais|places disponibles/i);
  const waiting=suiteCardHtml({visible:true,acceleratorUrl:null,waiting:true});
  assert.match(waiting,/Tu es inscrit sur la liste d'attente/);
- assert.equal(waiting.includes('Liste d\'attente Expansion'),false);
+ assert.match(waiting,/Me retirer de la liste/);
+ assert.match(waiting,new RegExp(GHL_LINKS.expansion.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+ assert.match(waiting,new RegExp(GHL_LINKS.accelerator.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
  assert.doesNotMatch(waiting,/\$|prix|places disponibles/i);
  assert.equal(suiteCardHtml({visible:false,acceleratorUrl:APP,waiting:false}),'');
 });
@@ -118,6 +120,7 @@ test('assistant : la phrase de transfert est dans le portail, pas un envoi',()=>
  assert.match(card,/Je transfère ta question à l&#39;équipe\. Tu auras une réponse ici d&#39;ici 48 h ouvrables\./);
  assert.match(card,/48 h ouvrables/);
  assert.match(card,/texto ni en privé/);
+ assert.match(card,new RegExp(GHL_LINKS.support.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
  assert.equal(card.includes('mailto:'),false);
  const draft=ticketDraft('  Où sont   mes leads ?  ',A,U,'2026-10-30T16:00:00.000Z');
  assert.equal(draft.question,'Où sont mes leads ?');
@@ -132,7 +135,9 @@ test('liens https seulement, sans secret, placeholders non cliquables par défau
  assert.throws(()=>portalHttpsUrl('http://docs.google.com/document/d/x'),/https/);
  assert.throws(()=>portalHttpsUrl('https://user:pw@docs.google.com/document/d/x'),/identifiant/);
  assert.throws(()=>portalHttpsUrl('https://docs.google.com/document/d/x?access_token=secret'),/secret/);
- for(const url of Object.values(LINK_PLACEHOLDERS))assert.match(url,/PLACEHOLDER/);
+ for(const key of ['cg97_lien_template_pub','cg97_lien_template_prospection'])assert.match(LINK_PLACEHOLDERS[key],/PLACEHOLDER/);
+ assert.equal(LINK_PLACEHOLDERS.lien_app_accelerator,GHL_LINKS.accelerator);
+ assert.equal(portalHttpsUrl(GHL_LINKS.accelerator),GHL_LINKS.accelerator);
  const empty=resourcesCardHtml(visibleAddons(['CG97-bump-template-pub'],{}));
  assert.equal(empty.includes(LINK_PLACEHOLDERS[LINK_KEYS.templatePub]),false);
 });
@@ -171,7 +176,7 @@ test('RLS : le client voit ses lignes, l’admin voit tout, pas d’écriture cr
   assert.equal((await db.query('select key from portal_links order by key')).rows.length,3);
   const hidden=await db.query(`update portal_links set url='https://example.com/a' where key='lien_app_accelerator' returning key`);
   assert.equal(hidden.rows.length,0);
-  assert.equal((await db.query(`select url from portal_links where key='lien_app_accelerator'`)).rows[0].url,null);
+  assert.equal((await db.query(`select url from portal_links where key='lien_app_accelerator'`)).rows[0].url,GHL_LINKS.accelerator);
   await assert.rejects(db.exec(`insert into sprint97_client_state(client_id,tags) values('${A}',array['CG97-bilan-livré'])`),/row-level/);
   await db.exec(`insert into expansion_waitlist(client_id,requested_at) values('${A}','2026-10-30T15:00:00Z')`);
   await assert.rejects(db.exec(`insert into expansion_waitlist(client_id,status) values('${B}','en_attente')`),/row-level/);
