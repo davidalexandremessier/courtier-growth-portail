@@ -1,7 +1,7 @@
 import {metaPanel} from './meta-panel.mjs';
 import {createClient} from '@supabase/supabase-js';
 import {offerDescriptions,offerKey} from '../entitlements.mjs';
-import {ADDONS,BILAN_TAG,LINK_FIELDS,LINK_PLACEHOLDERS,TICKET_STATUSES,TICKET_STATUS_LABELS,WAITLIST_STATUSES,WAITLIST_STATUS_LABELS,answerQuestion,formatToronto,joinWaitlist,normalizeTags,portalHttpsUrl,sprint97Cards,supportCardHtml,tableMissing,ticketDraft,ticketUpdate,waitlistUpdate} from '../sprint97-portal.mjs';
+import {ADDONS,BILAN_TAG,LINK_FIELDS,LINK_PLACEHOLDERS,TICKET_STATUSES,TICKET_STATUS_LABELS,WAITLIST_STATUSES,WAITLIST_STATUS_LABELS,answerQuestion,formatToronto,joinWaitlist,normalizeTags,openWaitlist,portalHttpsUrl,sprint97Cards,supportCardHtml,tableMissing,ticketDraft,ticketUpdate,waitlistUpdate} from '../sprint97-portal.mjs';
 import {readPortalEntry,rememberDeepLink,resolveDeepLink,takeDeepLink} from '../deep-link.mjs';
 import {salesFields,metaFields,crmFields,fromRow,toRow,recentWeeks,torontoToday,shiftDay,parseCount,validate,salesKpis,metaKpis,crmKpis,kpis,reading,teamWeek,sumWeeks,isClientOwner,openTasks,triage} from './metrics.mjs';
 
@@ -342,11 +342,22 @@ async function joinExpansion(){
       if(decision.already)recorded=true;
       else{const {error}=await st.sb.from('expansion_waitlist').insert(decision.row);recorded=!error}
     }
-    const tagged=await markSprintTag('expansion-oui',{quiet:true});
-    if(recorded&&tagged){st.message='Tu es inscrit sur la liste d’attente.';st.error=''}
-    else if(tagged){st.message='Le formulaire s’ouvre. L’inscription dans le portail n’est pas encore enregistrée.';st.error=''}
-    else{st.message='';st.error='Le marquage n’a pas abouti. Rien n’a été envoyé par texto ou par courriel.'}
+    if(recorded){st.message='Tu es inscrit sur la liste d’attente.';st.error=''}
+    else{st.message='Le formulaire s’ouvre. L’inscription dans le portail n’est pas encore enregistrée.';st.error=''}
     if(st.sprint97?.ready)await loadSprint97(st.clientId);
+    render();
+  }finally{sprintBusy=false}
+}
+async function acceptExpansion(){
+  if(sprintBusy||st.admin)return;
+  const open=openWaitlist(st.sprint97?.waitlist||[],st.clientId);
+  if(open?.status!=='place_offerte'){st.error='Aucune place offerte.';render();return}
+  sprintBusy=true;
+  try{
+    const tagged=await markSprintTag('expansion-oui',{quiet:true});
+    if(st.sprint97?.ready)await loadSprint97(st.clientId);
+    if(tagged?.waitlist?.saved){st.message='Tu as accepté la place.';st.error=''}
+    else{st.message='';st.error='La place n’a pas pu être acceptée.';if(st.tagNotes)delete st.tagNotes['expansion-oui']}
     render();
   }finally{sprintBusy=false}
 }
@@ -406,6 +417,7 @@ async function saveFlags(e){
 }
 async function act(a){
   if(a==='waitlist-join')return joinExpansion();
+  if(a==='waitlist-accept')return acceptExpansion();
   if(a==='waitlist-leave')return leaveExpansion();
   if(a.startsWith('tag:')){await markSprintTag(a.slice(4));render();return}
   if(a==='support-handoff')return handoffSupport();

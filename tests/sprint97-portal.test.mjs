@@ -6,7 +6,7 @@ import {offerLabel} from '../src/offers.mjs';
 import {
  ADDONS,BILAN_TAG,FAQ,GHL_LINKS,HANDOFF_PHRASE,LINK_KEYS,LINK_PLACEHOLDERS,
  answerQuestion,joinWaitlist,normalizeTags,openWaitlist,portalHttpsUrl,resourcesCardHtml,
- sprint97Cards,suiteCardHtml,supportCardHtml,ticketDraft,visibleAddons,waitlistUpdate
+ sprint97Cards,suiteCardHtml,suiteWaitState,supportCardHtml,ticketDraft,visibleAddons,waitlistUpdate
 } from '../src/sprint97-portal.mjs';
 
 const A='00000000-0000-4000-8000-00000000000a';
@@ -54,13 +54,23 @@ test('Ta suite : après le bilan seulement, sans prix ni places',()=>{
  assert.match(after.suite,/Liste d'attente Expansion/);
  assert.match(after.suite,new RegExp(APP.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
  assert.doesNotMatch(after.suite,/\$|prix|2[\s\u00a0]?000|3[\s\u00a0]?000|4[\s\u00a0]?500|fondateur|rabais|places disponibles/i);
- const waiting=suiteCardHtml({visible:true,acceleratorUrl:null,waiting:true});
+ const waiting=suiteCardHtml({visible:true,acceleratorUrl:null,waitState:'waiting'});
  assert.match(waiting,/Tu es inscrit sur la liste d'attente/);
  assert.match(waiting,/Me retirer de la liste/);
+ assert.match(waiting,/Liste d'attente Expansion/);
+ assert.equal(waiting.includes("J'accepte la place"),false);
+ assert.equal(waiting.includes('cg97-expansion-oui'),false);
  assert.match(waiting,new RegExp(GHL_LINKS.expansion.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
  assert.match(waiting,new RegExp(GHL_LINKS.accelerator.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
  assert.doesNotMatch(waiting,/\$|prix|places disponibles/i);
- assert.equal(suiteCardHtml({visible:false,acceleratorUrl:APP,waiting:false}),'');
+ const offered=suiteCardHtml({visible:true,acceleratorUrl:null,waitState:'offered'});
+ assert.match(offered,/J'accepte la place/);
+ assert.match(offered,/data-act="waitlist-accept"/);
+ assert.equal(offered.includes('Liste d\'attente Expansion'),false);
+ assert.equal(offered.includes('cg97-expansion-oui'),false);
+ assert.equal(suiteWaitState([{client_id:A,status:'place_offerte'}],A),'offered');
+ assert.equal(suiteWaitState([{client_id:A,status:'en_attente'}],A),'waiting');
+ assert.equal(suiteCardHtml({visible:false,acceleratorUrl:APP,waitState:'none'}),'');
 });
 
 test('liste d’attente : une demande ouverte par client, sans envoi',()=>{

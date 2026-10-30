@@ -86,18 +86,33 @@ export function resourcesCardHtml(addons){
  return `<section class="card sprint97-card" data-card="resources"><p class="kicker">MES RESSOURCES</p><h2>Tes ajouts, prêts à utiliser</h2><p>Chaque bouton ouvre le Google Doc. Tu peux en faire une copie.</p><div class="sprint97-actions">${buttons}</div></section>`;
 }
 export function acceleratorHref(url){return safeLink(url)||GHL_LINKS.accelerator}
-export function suiteCardHtml({visible,acceleratorUrl,waiting}){
+export function suiteWaitState(rows,clientId){
+ const open=openWaitlist(rows,clientId);
+ if(open?.status==='place_offerte')return 'offered';
+ if(open)return 'waiting';
+ if((rows||[]).some(row=>(!clientId||row.client_id===clientId)&&row.status==='acceptee'))return 'accepted';
+ return 'none';
+}
+export function suiteCardHtml({visible,acceleratorUrl,waitState='none'}){
  if(!visible)return '';
  const accelerator=`<a class="secondary-link" href="${h(acceleratorHref(acceleratorUrl))}" target="_blank" rel="noopener noreferrer">Candidature Accelerator</a>`;
- const expansion=`<a class="secondary-link" href="${h(GHL_LINKS.expansion)}" target="_blank" rel="noopener noreferrer" data-act="waitlist-join">Liste d'attente Expansion</a>`;
- const status=waiting?`<p class="sprint97-wait" role="status">Tu es inscrit sur la liste d'attente.</p><button type="button" class="secondary" data-act="waitlist-leave">Me retirer de la liste</button>`:'';
- return `<section class="card sprint97-card" data-card="suite"><p class="kicker">TA SUITE</p><h2>La suite de ton Sprint</h2><p>Ton Sprint a installé le L. L'Accelerator installe le reste de ton système L.I.S.T. ; l'Expansion en est la version 1:1.</p><div class="sprint97-actions">${accelerator}${expansion}</div>${status}</section>`;
+ const join=`<a class="secondary-link" href="${h(GHL_LINKS.expansion)}" target="_blank" rel="noopener noreferrer" data-act="waitlist-join">Liste d'attente Expansion</a>`;
+ const leave=`<button type="button" class="secondary" data-act="waitlist-leave">Me retirer de la liste</button>`;
+ const accept=`<button type="button" class="secondary" data-act="waitlist-accept">J'accepte la place</button>`;
+ const followup=waitState==='offered'
+  ?`<p class="sprint97-wait" role="status">L'équipe t'a proposé une place.</p><div class="sprint97-actions">${accept}${leave}</div>`
+  :waitState==='waiting'
+   ?`<p class="sprint97-wait" role="status">Tu es inscrit sur la liste d'attente.</p>${leave}`
+   :waitState==='accepted'
+    ?`<p class="sprint97-wait" role="status">Tu as accepté la place.</p>`
+    :'';
+ return `<section class="card sprint97-card" data-card="suite"><p class="kicker">TA SUITE</p><h2>La suite de ton Sprint</h2><p>Ton Sprint a installé le L. L'Accelerator installe le reste de ton système L.I.S.T. ; l'Expansion en est la version 1:1.</p><div class="sprint97-actions">${accelerator}${waitState==='none'||waitState==='waiting'?join:''}</div>${followup}</section>`;
 }
 export function sprint97Cards({offer,tags,links,waitlist,clientId}){
  if(offerKey(offer)!=='97')return {resources:'',suite:''};
  return {
   resources:resourcesCardHtml(visibleAddons(tags,links)),
-  suite:suiteCardHtml({visible:suiteReady(tags),acceleratorUrl:links?.[LINK_KEYS.accelerator]||null,waiting:!!openWaitlist(waitlist,clientId)})
+  suite:suiteCardHtml({visible:suiteReady(tags),acceleratorUrl:links?.[LINK_KEYS.accelerator]||null,waitState:suiteWaitState(waitlist,clientId)})
  };
 }
 export function supportCardHtml({tickets=[],result=null}={}){

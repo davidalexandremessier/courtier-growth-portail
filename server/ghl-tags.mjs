@@ -11,6 +11,10 @@ export const GHL_TAG_ACTIONS={
 };
 export const GHL_LOCATION_ID=CENTRAL_GHL_LOCATION;
 
+export function acceptOfferedSpot(rows,clientId){
+ const ids=(rows||[]).filter(row=>row.client_id===clientId&&row.status==='place_offerte').map(row=>row.id);
+ return ids.length?{ok:true,status:'acceptee',ids}:{ok:false,status:null,ids:[]};
+}
 export function taggingEnabled(env=process.env){return env.GHL_TAGGING_ENABLED==='true'}
 export function tagForAction(action){return GHL_TAG_ACTIONS[action]||null}
 export function sprint97Offer(offer){return offerGroup(offer)==='Campagne 97 $'}

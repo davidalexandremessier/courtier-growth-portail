@@ -1,5 +1,5 @@
 import {createClient} from '@supabase/supabase-js';
-import {applyClientTag,sprint97Offer,tagForAction} from '../server/ghl-tags.mjs';
+import {acceptOfferedSpot,applyClientTag,sprint97Offer,tagForAction} from '../server/ghl-tags.mjs';
 
 function fail(res,status,error){return res.status(status).json({error})}
 function originAllowed(req){
@@ -15,14 +15,16 @@ function serviceDb(){
 async function syncWaitlist(clientId,action){
  const db=serviceDb();
  if(!db)return {saved:false};
- const status=action==='expansion-oui'?'en_attente':'retiree';
+ if(action==='expansion-oui'){
+  const offered=await db.from('expansion_waitlist').select('id,client_id,status').eq('client_id',clientId).eq('status','place_offerte');
+  if(offered.error)return {saved:false};
+  const plan=acceptOfferedSpot(offered.data||[],clientId);
+  if(!plan.ok)return {saved:false};
+  const updated=await db.from('expansion_waitlist').update({status:'acceptee',updated_at:new Date().toISOString()}).in('id',plan.ids);
+  return {saved:!updated.error};
+ }
  const open=await db.from('expansion_waitlist').select('id').eq('client_id',clientId).in('status',['en_attente','place_offerte']);
  if(open.error)return {saved:false};
- if(status==='en_attente'){
-  if(open.data?.length)return {saved:true,already:true};
-  const inserted=await db.from('expansion_waitlist').insert({client_id:clientId,status:'en_attente'});
-  return {saved:!inserted.error,already:false};
- }
  if(!open.data?.length)return {saved:true};
  const updated=await db.from('expansion_waitlist').update({status:'retiree',updated_at:new Date().toISOString()}).in('id',open.data.map(row=>row.id));
  return {saved:!updated.error};
@@ -55,9 +57,14 @@ export default async function handler(req,res){
     if(!hidden.error)contactId=hidden.data?.ghl_contact_id||null;
    }
   }
+  if(body.action==='expansion-oui'){
+   const waitlist=await syncWaitlist(body.clientId,body.action);
+   if(!waitlist.saved)return fail(res,409,'Aucune place offerte à accepter.');
+   const tagged=await applyClientTag({action:body.action,client:clientRow.data,contactId});
+   return res.status(200).json({...tagged,waitlist});
+  }
   const tagged=await applyClientTag({action:body.action,client:clientRow.data,contactId});
-  let waitlist=null;
-  if(body.action==='expansion-oui'||body.action==='expansion-retire')waitlist=await syncWaitlist(body.clientId,body.action);
+  const waitlist=body.action==='expansion-retire'?await syncWaitlist(body.clientId,body.action):null;
   return res.status(200).json({...tagged,waitlist});
  }catch(error){
   return fail(res,error.status||500,error.status?error.message:'Marquage impossible. Réessayez.');

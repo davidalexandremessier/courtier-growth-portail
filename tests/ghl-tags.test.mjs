@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import dispatch from '../api/[...slug].js';
 import handler from '../routes/ghl-tags.js';
-import {GHL_LOCATION_ID,GHL_TAG_ACTIONS,applyClientTag,taggingEnabled} from '../server/ghl-tags.mjs';
+import {GHL_LOCATION_ID,GHL_TAG_ACTIONS,acceptOfferedSpot,applyClientTag,taggingEnabled} from '../server/ghl-tags.mjs';
 
 const client={id:'00000000-0000-4000-8000-0000000000aa',email:'court@example.test',offer:'Campagne 97 $'};
 function response(){return {headers:{},setHeader(k,v){this.headers[k]=v},status(c){this.statusCode=c;return this},json(b){this.body=b;return this}}}
@@ -64,6 +64,18 @@ test('sans identifiant, le courriel unique trouve la fiche ; un doublon ou un ma
  await assert.rejects(()=>applyClientTag({action:'apercus-correction',client,contactId:'contact-1',env:{GHL_TAGGING_ENABLED:'true',GHL_CENTRAL_TOKEN:'jeton-test'},fetchImpl:wrong.fetchImpl,log:()=>{}}),/sous-compte/);
  assert.equal(wrong.calls.some(call=>call.url.endsWith('/tags')),false);
  await assert.rejects(()=>applyClientTag({action:'clarif-ok',client,contactId:'contact-1',env:{GHL_TAGGING_ENABLED:'true'},fetchImpl:()=>{throw new Error('appel')},log:()=>{}}),/Jeton/);
+});
+
+test('cg97-expansion-oui seulement pour accepter une place offerte',()=>{
+ assert.deepEqual(acceptOfferedSpot([{id:'1',client_id:'a',status:'en_attente'},{id:'2',client_id:'a',status:'place_offerte'}],'a'),{ok:true,status:'acceptee',ids:['2']});
+ assert.deepEqual(acceptOfferedSpot([{id:'1',client_id:'a',status:'en_attente'}],'a'),{ok:false,status:null,ids:[]});
+});
+
+test('le bouton d’inscription n’envoie pas cg97-expansion-oui',async()=>{
+ const src=await fs.readFile(new URL('../src/v2/main.js',import.meta.url),'utf8');
+ const join=src.slice(src.indexOf('async function joinExpansion'),src.indexOf('async function acceptExpansion'));
+ assert.equal(join.includes('expansion-oui'),false);
+ assert.match(src,/async function acceptExpansion[\s\S]*expansion-oui/);
 });
 
 test('les cinq actions correspondent aux tags, et la route ne part pas en GHL',async()=>{
