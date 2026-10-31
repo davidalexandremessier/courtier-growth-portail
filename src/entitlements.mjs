@@ -11,9 +11,9 @@ export const capabilityMatrix={
  legacy:['portal','messages','resources','files','activities','metrics','goals','self_guidance','group_coaching','crm_client','legacy_onboarding','reflections','individual_support','team','offers_info'],
 };
 export const offerDescriptions={
- '97':{label:offerLabel('Campagne 97 $'),execution:'Programme de 21 jours. Courtier Growth installe la campagne; vous traitez vos demandes.',support:'Préparation, appel de cadrage et bilan au 21e jour.',boundary:'Première marche. Aucun CRM client, ni Accelerator, ni Expansion 1:1 inclus.'},
- group:{label:offerLabel('Groupe'),execution:'Programme de groupe fait avec vous : vous avancez ensemble, dans un cadre commun.',support:'Candidature, puis approbation, puis lien de paiement.',boundary:'La production déléguée et le soutien individuel ne sont pas inclus. Le guidage IA n’est pas connecté dans cette version.'},
- individual:{label:offerLabel('1:1'),execution:'Accompagnement individuel, dans le périmètre convenu avec vous.',support:'Candidature, puis appel obligatoire avec David, avant le paiement.',boundary:'Vous conservez votre rôle commercial. Aucun résultat garanti et aucun lancement sans autorisation.'},
+ '97':{label:offerLabel('Campagne 97 $'),execution:'Offre d’entrée à petit prix, sur 21 jours. Courtier Growth installe la campagne; vous traitez vos demandes.',support:'Préparation, appel de cadrage et bilan au 21e jour.',boundary:'Première marche. Aucun CRM client, ni Accelerator, ni Expansion 1:1 inclus.'},
+ group:{label:offerLabel('Groupe'),execution:'Offre de groupe de 3 mois, avec 20 à 30 clients. Vous avancez ensemble, dans un cadre commun.',support:'Candidature, puis approbation, puis lien de paiement.',boundary:'La production déléguée et le soutien individuel ne sont pas inclus. Le guidage IA n’est pas connecté dans cette version.'},
+ individual:{label:offerLabel('1:1'),execution:'Accompagnement individuel de 3 mois, dans le périmètre convenu avec vous.',support:'Candidature, puis appel obligatoire avec David, avant le paiement.',boundary:'Vous conservez votre rôle commercial. Aucun résultat garanti et aucun lancement sans autorisation.'},
  legacy:{label:'Offre à préciser',execution:'Parcours historique conservé.',support:'Périmètre à confirmer avec Courtier Growth.',boundary:'Aucune nouvelle offre attribuée automatiquement.'},
 };
 export function hasCapability(offer,capability){return capabilityMatrix[offerKey(offer)].includes(capability)}
