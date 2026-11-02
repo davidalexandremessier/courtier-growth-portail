@@ -2,6 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 try{process.loadEnvFile('.env.local')}catch{}
+if(!process.env.SUPABASE_URL)process.env.DEMARRER_ICI_MEMORY='1';
 const {default:stats}=await import('../routes/stats.js');
 const {default:config}=await import('../routes/config.js');
 const {default:invite}=await import('../routes/invite.js');
@@ -13,7 +14,8 @@ const {default:david}=await import('../routes/david.js');
 const {default:agencyOAuth}=await import('../server/agency-oauth-handler.mjs');
 const {default:wisprMetadata}=await import('../server/wispr-metadata-handler.mjs');
 const {default:ghlWebhook}=await import('../routes/ghl-webhook.js');
-const routes={'/api/stats':stats,'/api/david':david,'/api/connections':connections,'/api/invite':invite,'/api/calls':calls,'/api/results':results,'/api/oauth':oauth,'/api/agency-oauth':agencyOAuth,'/api/wispr-client-metadata':wisprMetadata,'/api/ghl-webhook/buyer-cockpit':ghlWebhook};
+const {default:demarrerIci}=await import('../routes/demarrer-ici.js');
+const routes={'/api/stats':stats,'/api/david':david,'/api/connections':connections,'/api/invite':invite,'/api/calls':calls,'/api/results':results,'/api/oauth':oauth,'/api/agency-oauth':agencyOAuth,'/api/wispr-client-metadata':wisprMetadata,'/api/ghl-webhook/buyer-cockpit':ghlWebhook,'/api/demarrer-ici':demarrerIci};
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
 const server=http.createServer(async(req,res)=>{
  res.status=n=>{res.statusCode=n;return res};res.json=v=>res.end(JSON.stringify(v));
@@ -26,7 +28,8 @@ const server=http.createServer(async(req,res)=>{
   req.query=Object.fromEntries(new URL(req.url,'http://localhost').searchParams);
   return routes[pathname](req,res);
  }
- const f=pathname==='/'?'index.html':pathname.slice(1);
+ const pages={'/demarrer-ici':'demarrer-ici/index.html','/demarrer-ici/':'demarrer-ici/index.html','/demarrer-ici/agence':'demarrer-ici/agence/index.html','/demarrer-ici/agence/':'demarrer-ici/agence/index.html'};
+ const f=pages[pathname]||(pathname==='/'?'index.html':pathname.slice(1));
  if(f.includes('..')){res.statusCode=400;return res.end()}
  try{const bytes=await fs.readFile(path.join('dist',f));res.setHeader('Content-Type',types[path.extname(f)]||'application/octet-stream');res.end(bytes)}catch{res.statusCode=404;res.end('Not found')}
 });

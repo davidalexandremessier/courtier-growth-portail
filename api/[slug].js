@@ -14,6 +14,7 @@ import statsBackground from '../routes/stats-background.js';
 import stats from '../routes/stats.js';
 import zoomArchive from '../routes/zoom-archive.js';
 import ghlWebhook from '../routes/ghl-webhook.js';
+import demarrerIci from '../routes/demarrer-ici.js';
 
 const routes={
  'bot-clients':botClients,
@@ -30,7 +31,8 @@ const routes={
  'stats-background':statsBackground,
  stats,
  'zoom-archive':zoomArchive,
- 'ghl-webhook':ghlWebhook
+ 'ghl-webhook':ghlWebhook,
+ 'demarrer-ici':demarrerIci
 };
 
 export const config={maxDuration:300};

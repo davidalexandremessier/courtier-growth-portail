@@ -10,3 +10,4 @@ await build({entryPoints:['src/v2/main.js'],bundle:true,minify:true,format:'esm'
 await fs.copyFile('public-v2/index.html','dist/index.html');
 await fs.copyFile('public-v2/style.css','dist/v2.css');
 await fs.copyFile('public-v2/extra.css','dist/v2-extra.css');
+await fs.cp('public/demarrer-ici','dist/demarrer-ici',{recursive:true});
