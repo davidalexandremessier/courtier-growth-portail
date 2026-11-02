@@ -119,3 +119,19 @@ section[id^="g-"]{scroll-margin-top:16px;margin-bottom:16px}
 .tiles.counts button.tile{text-align:left;border:0;min-height:auto;background:var(--paper);border:1px solid var(--line)}
 .tiles.counts button.tile.yellow{background:var(--amber-bg);color:var(--amber)}.tiles.counts button.tile.red{background:var(--red-bg);color:var(--red)}
 .tiles.counts button.tile strong{font-family:var(--serif);font-size:26px;font-weight:600}.tiles.counts button.tile span{display:block;color:inherit;font-weight:600;font-size:13px}
+/* Sprint 97 $ : ressources, suite, assistant */
+.sprint97-home{display:grid;gap:16px;margin-top:18px}
+.sprint97-card .kicker{margin-bottom:4px}
+.sprint97-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+.sprint97-actions .secondary-link,.sprint97-actions .secondary{margin:0}
+.sprint97-pending{display:grid;gap:4px}
+.sprint97-wait{margin:0;font-weight:650}
+#support-ask{display:grid;gap:10px;margin-top:14px}
+#support-ask textarea{min-height:96px;font-size:16px}
+.support-answer{margin-top:14px;padding:14px;border-radius:14px;background:var(--linen);display:grid;gap:10px}
+.support-answer p{margin:0}
+.sprint97-tickets{margin-top:16px}
+.sprint97-status{margin:0}
+.sprint97-status select{min-width:180px}
+form.sprint97-ticket{display:grid;gap:10px}
+#sprint97-links label,#sprint97-flags label{font-weight:600}

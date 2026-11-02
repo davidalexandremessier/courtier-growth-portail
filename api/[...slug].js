@@ -4,6 +4,7 @@ import calls from '../routes/calls.js';
 import configRoute from '../routes/config.js';
 import connections from '../routes/connections.js';
 import david from '../routes/david.js';
+import ghlTags from '../routes/ghl-tags.js';
 import invite from '../routes/invite.js';
 import notificationWorker from '../routes/notification-worker.js';
 import notifications from '../routes/notifications.js';
@@ -20,6 +21,7 @@ const routes={
  config:configRoute,
  connections,
  david,
+ 'ghl-tags':ghlTags,
  invite,
  'notification-worker':notificationWorker,
  notifications,

@@ -10,7 +10,7 @@ import {config as backgroundConfig} from '../routes/stats-background.js';
 import {config as zoomConfig} from '../routes/zoom-archive.js';
 import {config as workerConfig} from '../routes/notification-worker.js';
 
-const names=['bot-clients','calls','config','connections','david','invite','notification-worker','notifications','oauth','results','stats-background','stats','zoom-archive'];
+const names=['bot-clients','calls','config','connections','david','ghl-tags','invite','notification-worker','notifications','oauth','results','stats-background','stats','zoom-archive'];
 
 function response(){return {headers:{},setHeader(k,v){this.headers[k]=v},status(c){this.statusCode=c;return this},json(b){this.body=b;return this},end(b){this.ended=b;return this}}}
 
