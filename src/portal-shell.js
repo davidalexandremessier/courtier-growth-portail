@@ -1,7 +1,7 @@
 // V0.34 visual shell, adapted to the live portal's existing pages and access rules.
 // Business data and permissions remain in app.js and entitlements.mjs.
 const adminSections={overview:['Vue d’ensemble','grid'],clients:['Clients','people'],followup:['Clients à suivre','people'],'production-queue':['Production','check'],automations:['Automatisation','clock'],'admin-help':['Aide et avis','chat'],feedback:['Aide et avis','chat']};
-const clientSections={dashboard:['Résultats','chart'],diagnostic:['Diagnostic','grid'],'data-hub':['Données','link'],onboarding:['Mon parcours','check'],'action-hub':['À faire','check'],kpi:['Mes résultats','chart'],coachings:['Rendez-vous','clock'],messages:['Messages','chat'],resources:['Mes ressources','link'],preferences:['Paramètres','settings']};
+const clientSections={dashboard:['Résultats','chart'],acheteurs:['Acheteurs','people'],diagnostic:['Diagnostic','grid'],'data-hub':['Données','link'],onboarding:['Mon parcours','check'],'action-hub':['À faire','check'],kpi:['Mes résultats','chart'],coachings:['Rendez-vous','clock'],messages:['Messages','chat'],resources:['Mes ressources','link'],preferences:['Paramètres','settings']};
 
 export function portalShell(c){
  const {state,cl,admin,global,demo,h,icon,nav,clientNavigation,contextItems,currentContextPage,pageTabs,activeDestination,clientSectionFor,hasCapability,communicationHeader,pushOnboardingHTML,remindersHTML,globalPage,clientPage,empty,button,productFeedbackButton}=c;

@@ -13,6 +13,7 @@ import results from '../routes/results.js';
 import statsBackground from '../routes/stats-background.js';
 import stats from '../routes/stats.js';
 import zoomArchive from '../routes/zoom-archive.js';
+import ghlWebhook from '../routes/ghl-webhook.js';
 
 const routes={
  'bot-clients':botClients,
@@ -28,7 +29,8 @@ const routes={
  results,
  'stats-background':statsBackground,
  stats,
- 'zoom-archive':zoomArchive
+ 'zoom-archive':zoomArchive,
+ 'ghl-webhook':ghlWebhook
 };
 
 export const config={maxDuration:300};
@@ -48,8 +50,14 @@ function segments(req){
  return pathname.slice('/api/'.length).split('/').filter(Boolean).map(part=>{try{return decodeURIComponent(part)}catch{return part}});
 }
 
+function routeFor(parts){
+ if(parts.length===2&&parts[0]==='ghl-webhook'&&parts[1]==='buyer-cockpit')return routes['ghl-webhook'];
+ const key=parts.length===1?parts[0]:undefined;
+ return key?routes[aliases[key]||key]:undefined;
+}
+
 export default function handler(req,res){
- const parts=segments(req),key=parts.length===1?parts[0]:undefined,route=key?routes[aliases[key]||key]:undefined;
+ const parts=segments(req),route=routeFor(parts);
  if(!route){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('Content-Type','application/json; charset=utf-8');

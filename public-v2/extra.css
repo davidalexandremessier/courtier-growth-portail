@@ -1,3 +1,11 @@
+.buyer-public{max-width:720px}
+.buyer-card .section-head{align-items:flex-start;gap:12px}
+.buyer-coup{padding:16px 0;border-top:1px solid var(--line)}
+.buyer-coup:first-of-type{border-top:0;padding-top:4px}
+.buyer-coup time{display:block;color:var(--muted);font-size:14px;margin-bottom:4px}
+.buyer-property-meta{display:flex;flex-wrap:wrap;gap:8px 14px;margin:6px 0}
+.buyer-property-meta .price{font-weight:700}
+.buyer-public a,.buyer-card a{color:var(--gold-ink);font-weight:650}
 .link.light{color:#E3C98A;display:block;margin-top:6px}
 label.inline{display:flex;gap:10px;align-items:center;font-weight:600}label.inline input{width:22px;min-height:22px;accent-color:var(--gold)}
 textarea{font:inherit;min-height:80px}
