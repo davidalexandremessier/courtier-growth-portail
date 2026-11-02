@@ -54,7 +54,6 @@ function renderClient(){
   return;
  }
  const current=data.steps.find(step=>step.id===st.step)||data.steps[0];
- const block=data.blocking;
  const dots=data.steps.map(step=>{
   const cls=step.status==='valide'||step.status==='non_applicable'?'done':step.status==='besoin_aide'?'help':'';
   return `<button type="button" class="di-dot ${cls}" data-go="${step.id}" aria-current="${step.id===current.id?'step':'false'}" aria-label="Étape ${step.id}, ${esc(step.title)}, ${esc(step.statusLabel)}">${step.id}</button>`;
@@ -92,7 +91,7 @@ function renderClient(){
    <button type="button" class="secondary" data-act="verifier" ${st.busy?'disabled':''}>Lancer la vérification</button>
    <button type="button" class="link" data-act="aide">Besoin d’aide</button>
   </div>
-  <p class="small muted">L’aide indique l’étape qui bloque${block?` : ${esc(block.title)}`:''}.</p>
+  <p class="small muted">L’aide porte sur l’étape affichée : ${esc(current.title)}.</p>
   <p class="small"><a href="/demarrer-ici/agence">Suivi de l’agence</a></p>
   ${helpDialog(data)}`);
  bind();
@@ -101,15 +100,15 @@ function renderClient(){
 function stepBody(step){
  const links=step.actions.filter(action=>action.kind==='lien'&&action.href);
  const form=step.actions.some(action=>action.kind==='formulaire');
- const ask=step.actions.find(action=>action.kind==='demande');
  const parts=[];
  if(form)parts.push(brokerForm(step));
  if(links.length){
   parts.push(`<div class="di-actions">${links.map(action=>`<a class="primary" href="${esc(action.href)}" target="_blank" rel="noopener noreferrer">${esc(action.label)}</a>`).join('')}<p class="small muted">S’ouvre dans un nouvel onglet, sur la page concernée.</p></div>`);
  }
- if(ask)parts.push(`<div class="di-actions"><button type="button" class="primary" data-act="signaler" data-step="${step.id}" ${st.busy?'disabled':''}>${esc(ask.label)}</button></div>`);
- if(step.signaler&&!ask)parts.push(`<button type="button" class="secondary" data-act="signaler" data-step="${step.id}">${esc(step.signaler)}</button>`);
- if(step.decliner)parts.push(`<button type="button" class="link" data-act="decliner" data-step="${step.id}">${esc(step.decliner)}</button>`);
+ const secondary=[];
+ if(step.signaler)secondary.push(`<button type="button" class="secondary" data-act="signaler" data-step="${step.id}">${esc(step.signaler)}</button>`);
+ if(step.decliner)secondary.push(`<button type="button" class="link" data-act="decliner" data-step="${step.id}">${esc(step.decliner)}</button>`);
+ if(secondary.length)parts.push(`<div class="di-actions">${secondary.join('')}</div>`);
  return parts.join('');
 }
 
@@ -117,10 +116,10 @@ function brokerForm(step){
  const broker=st.data.broker||{};
  const fields=step.fields.filter(field=>SAFE_TYPES.has(field.type)&&!/password|token|secret/i.test(field.name));
  const inputs=fields.map(field=>{
-  const value=broker[field.name]||'';
+  const value=field.name==='fuseau'?(broker.fuseau||'America/Toronto'):(broker[field.name]||'');
   const err=st.fields?.[field.name];
   const control=field.type==='select'
-   ? `<select name="${esc(field.name)}" required><option value="">Choisir</option>${field.options.map(([v,label])=>`<option value="${esc(v)}"${v===value?' selected':''}>${esc(label)}</option>`).join('')}</select>`
+   ? `<select name="${esc(field.name)}" required>${field.name==='fuseau'?'':`<option value="">Choisir</option>`}${field.options.map(([v,label])=>`<option value="${esc(v)}"${v===value?' selected':''}>${esc(label)}</option>`).join('')}</select>`
    : `<input name="${esc(field.name)}" type="${esc(field.type)}" autocomplete="${esc(field.autocomplete||'on')}" value="${esc(value)}" required>`;
   return `<label>${esc(field.label)}${control}${err?`<small>${esc(err)}</small>`:''}</label>`;
  }).join('');
@@ -128,10 +127,9 @@ function brokerForm(step){
 }
 
 function helpDialog(data){
- const block=data.blocking;
- const text=block?`L’étape qui bloque : ${block.title}.`:'Aucune étape ne bloque le parcours. Vous pouvez quand même écrire à l’agence.';
+ const current=data.steps.find(step=>step.id===st.step)||data.steps[0];
  if(!st.help)return '';
- return `<dialog class="sheet"><form method="dialog" data-form="aide"><h2>Besoin d’aide</h2><p>${esc(text)}</p><label>Qu’est-ce qui bloque ?<textarea name="note" maxlength="500" required rows="4"></textarea></label><div class="di-actions"><button class="primary" type="submit">Envoyer à l’agence</button><button class="secondary" type="button" data-act="fermer">Fermer</button></div></form></dialog>`;
+ return `<dialog class="sheet"><form method="dialog" data-form="aide"><h2>Besoin d’aide</h2><p>L’aide porte sur l’étape affichée : ${esc(current.title)}.</p><label>Qu’est-ce qui bloque ?<textarea name="note" maxlength="500" required rows="4"></textarea></label><div class="di-actions"><button class="primary" type="submit">Envoyer à l’agence</button><button class="secondary" type="button" data-act="fermer">Fermer</button></div><p class="small muted">La note est enregistrée dans le suivi. Aucun courriel ni texto n’est envoyé.</p></form></dialog>`;
 }
 
 function bind(){
@@ -153,7 +151,7 @@ function bind(){
  const help=app.querySelector('[data-form=aide]');
  if(help)help.addEventListener('submit',event=>{
   event.preventDefault();
-  run('aide',{note:new FormData(help).get('note')});
+  run('aide',{note:new FormData(help).get('note'),step:st.step});
  });
  const dialog=app.querySelector('dialog');
  if(dialog)dialog.showModal();
@@ -187,11 +185,29 @@ function renderGate(message){
 function renderAgency(){
  const data=st.agency;
  const cards=(data.locations||[]).map(row=>{
-  const steps=row.steps.map(step=>`<div class="di-row"><div class="section-head"><strong>${step.id}. ${esc(step.title)}</strong><span class="chip ${step.status==='valide'?'green':step.status==='besoin_aide'?'red':step.status==='en_attente'?'yellow':step.status==='non_applicable'?'gold':'neutral'}">${esc(step.statusLabel)}</span></div>${step.detail?`<p class="small">${esc(step.detail)}</p>`:''}<div class="di-buttons">${agencyButtons(row.locationId,step)}</div></div>`).join('');
-  return `<article class="card di-agency"><p class="kicker">${esc(row.broker.nom||'Courtier pas encore inscrit')}</p><h2>${esc(row.broker.entreprise||'Sous-compte de test')}</h2><p class="meta"><span class="chip ink">${row.progress.done} sur ${row.progress.total}</span>${row.blocking?`<span class="chip red">Bloque : ${esc(row.blocking.title)}</span>`:'<span class="chip green">Rien ne bloque</span>'}</p><p><strong>Prochaine action.</strong> ${esc(row.nextAction)}</p>${row.help?`<p class="notice">Aide, étape ${row.help.stepId} : ${esc(row.help.note)}</p>`:''}${row.broker.courriel?`<p class="small muted">${esc(row.broker.courriel)} · ${esc(row.broker.telephone||'')}</p>`:''}<p class="small muted">Vérifications : ${data.checks==='auto'?'automatiques':'manuelles, jeton de lecture absent'}. Sauvegarde : ${esc(data.storage)}.</p>${steps}</article>`;
+  const steps=row.steps.map(step=>`<div class="di-row"><div class="section-head"><strong>${step.id}. ${esc(step.title)}</strong><span class="chip ${step.status==='valide'?'green':step.status==='besoin_aide'?'red':step.status==='en_attente'?'yellow':step.status==='non_applicable'?'gold':'neutral'}">${esc(step.statusLabel)}</span></div>${step.detail?`<p class="small">${esc(step.detail)}</p>`:''}${publishedList(step)}<div class="di-buttons">${agencyButtons(row.locationId,step)}</div></div>`).join('');
+  return `<article class="card di-agency"><p class="kicker">${esc(row.broker.nom||'Courtier pas encore inscrit')}</p><h2>${esc(row.broker.entreprise||'Sous-compte de test')}</h2><p class="meta"><span class="chip ink">${row.progress.done} sur ${row.progress.total}</span>${row.blocking?`<span class="chip red">Bloque : ${esc(row.blocking.title)}</span>`:'<span class="chip green">Rien ne bloque</span>'}</p><p><strong>Prochaine action.</strong> ${esc(row.nextAction)}</p>${row.help?`<p class="notice">Aide, étape ${row.help.stepId} : ${esc(row.help.note)}</p>`:''}${row.broker.courriel?`<p class="small muted">${esc(row.broker.courriel)} · ${esc(row.broker.telephone||'')}</p>`:''}<p class="small muted">Vérifications : ${data.checks==='auto'?'automatiques':'manuelles, jeton de lecture absent'}. Sauvegarde : ${esc(data.storage)}.</p>${steps}<div class="di-actions"><button type="button" class="secondary" data-reset="${esc(row.locationId)}">Effacer la progression</button></div></article>`;
  }).join('');
  app.innerHTML=shell(`<p class="kicker">Agence</p><h1>Suivi — Démarrer ici</h1>${st.message?`<p class="toast">${esc(st.message)}</p>`:''}${st.error?`<p class="error">${esc(st.error)}</p>`:''}${data.checks==='manuel'?banner('Aucun jeton de lecture pour ce sous-compte. Les étapes restent en vérification manuelle tant que GHL_PILOT_LOCATION_TOKEN n’est pas posé.'):''}${cards}<p class="small"><a href="/demarrer-ici?location_id=${encodeURIComponent(PILOT)}">Ouvrir le parcours test</a></p>`);
  app.querySelectorAll('[data-statut]').forEach(node=>node.addEventListener('click',()=>agencyStatus(node)));
+ app.querySelectorAll('[data-reset]').forEach(node=>node.addEventListener('click',()=>agencyReset(node.dataset.reset)));
+}
+
+async function agencyReset(location){
+ if(!window.confirm('Effacer la progression de ce sous-compte de test ? Les réponses du formulaire seront perdues. Aucun message n’est envoyé.'))return;
+ st.error='';st.message='';
+ try{
+  const payload=await api('/api/demarrer-ici',{action:'reinitialiser',location_id:location},portalToken());
+  st.agency={...st.agency,locations:st.agency.locations.map(row=>row.locationId===payload.location.locationId?payload.location:row),storage:payload.storage};
+  st.message='Progression effacée.';
+ }catch(error){st.error=error.message}
+ renderAgency();
+}
+
+function publishedList(step){
+ const items=step.publishedWorkflows||[];
+ if(!items.length)return '';
+ return `<p class="small"><strong>Workflows publiés (${items.length}).</strong></p><ul class="di-published">${items.map(item=>`<li>${esc(item.name)} <span class="chip ${item.blocks?'red':'green'}">${item.blocks?'À laisser en brouillon':'Publié, autorisé'}</span></li>`).join('')}</ul>`;
 }
 
 function agencyButtons(location,step){

@@ -1,5 +1,6 @@
 // Lectures GET seulement. Jamais d’achat, de message, ni d’écriture GoHighLevel.
 import {PILOT_LOCATION_IDS} from '../src/demarrer-ici/model.mjs';
+import {classifyPublishedWorkflows} from '../src/demarrer-ici/workflows.mjs';
 
 const API='https://services.leadconnectorhq.com';
 const MANUAL='Vérification manuelle par l’agence.';
@@ -50,7 +51,10 @@ async function ghlGet(path,token,fetchImpl){
  if(url.origin!==API)return {ok:false,status:0};
  try{
   const response=await fetchImpl(url,{method:'GET',redirect:'error',signal:AbortSignal.timeout(8000),headers:{Authorization:'Bearer '+token,Version:'2021-07-28',Accept:'application/json'}});
-  if(!response.ok)return {ok:false,status:response.status};
+  if(!response.ok){
+   const body=await response.json().catch(()=>null);
+   return {ok:false,status:response.status,message:safeApiMessage(body)};
+  }
   const body=await response.json().catch(()=>null);
   return {ok:true,status:response.status,body};
  }catch{
@@ -75,23 +79,31 @@ function accountResult(location,workflows){
   return {step:2,outcome:snapshot?'partiel':'manuel',detail};
  }
  const list=Array.isArray(workflows.body?.workflows)?workflows.body.workflows:[];
- const published=list.filter(item=>/published|active/i.test(String(item.status||''))&&/prospection|new lead|centris|anniversaire|no-show/i.test(String(item.name||'')));
- if(!snapshot)return {step:2,outcome:'echoue',detail:'Aucun modèle (snapshot) détecté sur le sous-compte.'};
- if(published.length){
-  const names=published.slice(0,3).map(item=>safeLabel(item.name)).filter(Boolean).join(', ');
-  return {step:2,outcome:'echoue',detail:'Automatisations de prospection encore actives'+(names?' : '+names:'')+'.'};
+ const publishedWorkflows=classifyPublishedWorkflows(list);
+ const reported=Number(workflows.body?.total??workflows.body?.count??list.length);
+ if(Number.isFinite(reported)&&reported>list.length)return {step:2,outcome:'partiel',publishedWorkflows,detail:'La liste des automatisations est incomplète. '+MANUAL};
+ const blocking=publishedWorkflows.filter(item=>item.blocks);
+ if(!snapshot)return {step:2,outcome:'echoue',detail:'Aucun modèle (snapshot) détecté sur le sous-compte.',publishedWorkflows};
+ if(blocking.length){
+  const names=blocking.slice(0,3).map(item=>item.name).join(', ');
+  const reste=blocking.length>3?` et ${blocking.length-3} autre${blocking.length>4?'s':''}`:'';
+  return {step:2,outcome:'a_faire',publishedWorkflows,detail:blocking.length+' automatisation'+(blocking.length>1?'s':'')+' publiée'+(blocking.length>1?'s':'')+' alors qu’elles doivent rester en brouillon : '+names+reste+'.'};
  }
- if(duplicates)return {step:2,outcome:'partiel',detail:'Le modèle est chargé et les automatisations de prospection sont inactives. Les contacts en double sont encore permis. '+MANUAL};
- return {step:2,outcome:'reussi',detail:'Modèle chargé. Automatisations de prospection inactives. Doublons non permis.'};
+ if(duplicates)return {step:2,outcome:'partiel',publishedWorkflows,detail:'Le modèle est chargé et les automatisations à retenir sont en brouillon. Les contacts en double sont encore permis. '+MANUAL};
+ return {step:2,outcome:'reussi',publishedWorkflows,detail:'Modèle chargé. Les automatisations à retenir sont en brouillon. Doublons non permis.'};
 }
 
+const NO_PHONE='Aucun numéro / téléphonie pas encore configurée';
+
 function numberResult(numbers,sms){
- if(!numbers.ok)return {step:3,outcome:'manuel',detail:refused(numbers.status)};
+ if(!numbers.ok){
+  if(numbers.status===404&&/no twilio account found/i.test(numbers.message||''))return {step:3,outcome:'a_faire',detail:NO_PHONE};
+  return {step:3,outcome:'manuel',detail:refused(numbers.status)};
+ }
  const list=listOf(numbers.body,['numbers','data']);
  const ready=list.filter(canadianReady);
- if(!ready.length){
-  return {step:3,outcome:list.length?'echoue':'echoue',detail:list.length?'Des numéros sont présents, sans numéro canadien avec SMS et voix confirmé.':'Aucun numéro actif. L’achat se fait dans la page Numéros, pas ici.'};
- }
+ if(!list.length)return {step:3,outcome:'a_faire',detail:NO_PHONE};
+ if(!ready.length)return {step:3,outcome:'echoue',detail:'Des numéros sont présents, sans numéro canadien avec SMS et voix confirmé.'};
  const channel=sms.ok?providerCount(sms.body):null;
  const channelText=channel==null?' Le canal SMS n’a pas pu être lu.' : channel>0?' Canal SMS configuré.' : ' Canal SMS sans fournisseur dédié.';
  const masked=maskPhone(ready[0].phoneNumber||ready[0].phone||ready[0].number);
@@ -177,6 +189,13 @@ function maskPhone(value){
  const digits=String(value||'').replace(/\D/g,'');
  if(digits.length<4)return '';
  return '+'+digits[0]+' ••• ••• '+digits.slice(-4);
+}
+
+function safeApiMessage(body){
+ const raw=body?.message||body?.msg||(typeof body?.error==='string'?body.error:body?.error?.message)||'';
+ const text=String(raw).replace(/\s+/g,' ').trim().slice(0,180);
+ if(!text||/bearer|pit-|sk_|secret|token|api[_-]?key/i.test(text))return '';
+ return text;
 }
 
 function safeLabel(value){
