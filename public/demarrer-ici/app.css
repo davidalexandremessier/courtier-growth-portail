@@ -20,6 +20,8 @@
 .di-row{display:grid;gap:8px;padding:14px 0;border-top:1px solid var(--line-2)}
 .di-row:first-child{border-top:0}
 .di-buttons{display:flex;flex-wrap:wrap;gap:8px}
+.di-published{margin:8px 0 12px;padding-left:18px}
+.di-published li{margin:6px 0}
 .di-buttons .secondary,.di-buttons .link{width:auto}
 @media(min-width:780px){
  .di-dots{display:none}

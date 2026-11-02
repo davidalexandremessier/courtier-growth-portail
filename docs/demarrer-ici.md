@@ -31,7 +31,20 @@ Sous-compte autorisé : **TEMPLATE GHL**, `DsPXZp1SUaWntQvf0OTU`. Tout autre ide
 
 Les liens GoHighLevel s’ouvrent dans un nouvel onglet (`target="_blank"`), sinon la page GHL reste coincée dans l’iframe.
 
-Un clic « J’ai terminé » met **En attente**. Il ne met jamais **Validé**.
+Un clic « J’ai terminé cette étape » met **En attente**. Il ne met jamais **Validé**. Il n’envoie aucun courriel, texto ou message GoHighLevel. Il écrit seulement le statut dans la progression du portail. L’agence le voit dans `/demarrer-ici/agence`.
+
+## Boutons
+
+| Bouton | Effet | Message envoyé |
+|---|---|---|
+| Bouton principal de l’étape (ouvrir une page GoHighLevel, le formulaire, ou un magasin) | Ouvre la page, ou enregistre le formulaire | Aucun |
+| J’ai terminé cette étape | Statut **En attente** pour l’étape affichée | Aucun courriel, texto ou notification |
+| Cette étape ne me concerne pas | Statut **Non applicable**, ancienne liste seulement | Aucun |
+| Lancer la vérification | Un seul bouton, en bas de page. Lectures serveur, puis mise à jour des statuts | Aucun |
+| Besoin d’aide, puis Envoyer à l’agence | Note enregistrée sur **l’étape affichée**, statut **Besoin d’aide** | Aucun. Personne n’est prévenu automatiquement. L’agence lit la note dans le suivi |
+| Effacer la progression | Réservé à l’administrateur. Remet le sous-compte de test à zéro | Aucun |
+
+Le pilote n’envoie aucun courriel ni texto.
 
 ## Vérifications automatiques
 
@@ -42,8 +55,8 @@ Sans ce jeton, ou si la lecture est refusée, l’étape reste en **vérificatio
 | Étape | Lecture | Validé automatique |
 |---|---|---|
 | 1 | Champs du formulaire | Oui, si le formulaire est complet |
-| 2 | `GET /locations/:id`, `GET /workflows/?locationId=` | Oui, si un snapshot est chargé, les doublons sont refusés et aucune automatisation de prospection (prospection, new lead, Centris, anniversaire, no-show) n’est publiée |
-| 3 | Numéros actifs, canal SMS | Non. Un numéro canadien SMS et voix passe à **En attente** : l’identité et l’indicatif vérifié ne sont pas lisibles |
+| 2 | `GET /locations/:id`, `GET /workflows/?locationId=` | Oui, si un snapshot est chargé, les doublons sont refusés et chaque workflow publié est dans `WORKFLOWS_PUBLISHED_ALLOWED` (`src/demarrer-ici/workflows.mjs`). Tout autre workflow publié doit rester en brouillon. Le suivi agence liste les workflows publiés. |
+| 3 | Numéros actifs, canal SMS | Non. Aucun numéro, ou HTTP 404 « No Twilio account found », laisse l’étape **À faire** : « Aucun numéro / téléphonie pas encore configurée ». Un numéro canadien SMS et voix passe à **En attente** : l’identité et l’indicatif vérifié ne sont pas lisibles. |
 | 4 | Comptes du planificateur social | Non. Page Facebook active : **En attente**. Le mapping des formulaires reste manuel |
 | 5 | Calendriers | Non. La connexion Google n’a pas d’API |
 | 6 | Funnels, puis HTTPS si l’hôte est `*.courtiergrowth.com` | Oui, seulement si ce sous-domaine répond en HTTPS |
@@ -51,13 +64,23 @@ Sans ce jeton, ou si la lecture est refusée, l’étape reste en **vérificatio
 
 Les portées utiles du jeton : `locations.readonly`, `workflows.readonly`, `phonenumbers.read`, `socialplanner/account.readonly`, `calendars.readonly`, `funnels/funnel.readonly`.
 
+### Canaux SMS et courriel
+
+La lecture est `GET /locations/:locationId/conversationChannels/SMS` et `GET /locations/:locationId/conversationChannels/Email` (le type est en majuscules).
+
+La portée exacte est **`locations.readonly`**. C’est la portée déclarée par l’opération HighLevel « Get Conversation Channel ». Elle est déjà sur l’intégration pilote. `conversations.readonly` lit les fils de conversation, pas ce réglage de canal. `phonenumbers.read` lit la liste des numéros.
+
+Un HTTP 404 dont le message est « No Twilio account found » veut dire que le sous-compte n’a pas de compte téléphonie. L’étape 3 reste **À faire**. Ce n’est pas une portée manquante. « Lecture impossible pour le moment » reste réservé à un délai, un HTTP 5xx ou une réponse illisible. Un 401 ou un 403 reste « Lecture refusée ».
+
+### Workflows publiés
+
+La liste des exceptions se modifie dans `src/demarrer-ici/workflows.mjs`, constante `WORKFLOWS_PUBLISHED_ALLOWED`. Aujourd’hui : Reply STOP, les rappels et rendez-vous, et les changements de pipeline liés à un appel découverte ou pitch déjà réservé. Listing actif, visites, outbound call et anciens clients à fidéliser n’en font pas partie : s’ils sont publiés, l’étape 2 reste **À faire**. Le suivi agence affiche chaque workflow publié, autorisé ou à remettre en brouillon.
+
 ## Sauvegarde
 
-Table `public.demarrer_ici_progress`, migration `migrations/20261102_demarrer_ici.sql`.
+Table `public.demarrer_ici_progress`, migration `migrations/20261102_demarrer_ici.sql`. `anon` et `authenticated` n’ont aucun droit. L’API utilise `SUPABASE_URL` et `SUPABASE_ARCHIVE_SECRET_KEY`, après la liste blanche ou `is_admin()`.
 
-Elle n’a **pas** été appliquée : la base est la même qu’en production. `anon` et `authenticated` n’ont aucun droit. L’API utilise la clé service role déjà prévue (`SUPABASE_URL`, `SUPABASE_ARCHIVE_SECRET_KEY`), seulement après la liste blanche ou après `is_admin()`.
-
-Tant que la migration n’est pas appliquée, la page s’affiche et les écritures répondent que la progression n’est pas encore enregistrée. En local, sans Supabase, le serveur de développement garde la progression en mémoire.
+L’administrateur efface la progression d’un sous-compte depuis le suivi, bouton « Effacer la progression ». Ça remet le formulaire et les statuts à zéro. Aucun message n’est envoyé.
 
 ## Avant un vrai client : SSO Marketplace
 

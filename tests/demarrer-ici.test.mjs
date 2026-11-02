@@ -7,11 +7,12 @@ import {CallError} from '../server/calls.mjs';
 import {handleDemarrerIci,memoryStore} from '../server/demarrer-ici.mjs';
 import {pilotToken,runChecks} from '../server/demarrer-ici-checks.mjs';
 import {PILOT_LOCATION_IDS,emptyProgress,ghlLink,publicView} from '../src/demarrer-ici/model.mjs';
+import {classifyPublishedWorkflows,workflowMayStayPublished} from '../src/demarrer-ici/workflows.mjs';
 
 const PILOT=PILOT_LOCATION_IDS[0];
 const CENTRAL='3dojB6zA4kH0xUBvGzEJ';
 const TOKEN='pit-TEST-DO-NOT-LEAK-000000';
-const broker={nom:'Camille Tremblay',courriel:'camille@example.test',telephone:'514 555-0199',entreprise:'Tremblay immobilier',secteur:'residentiel',fuseau:'America/Toronto'};
+const broker={nom:'Camille Tremblay',courriel:'camille@example.test',telephone:'514 555-0199',entreprise:'Tremblay immobilier',secteur:'residentiel',territoire:'Montréal et Rive-Nord',fuseau:'America/Toronto'};
 
 function response(){return {headers:{},setHeader(k,v){this.headers[k]=v},status(c){this.statusCode=c;return this},json(b){this.body=b;return this}}}
 function stamp(seconds){return new Date(Date.parse('2026-11-02T16:00:00Z')+seconds*1000).toISOString()}
@@ -235,8 +236,11 @@ function mockFetch(data){
   const href=String(url);
   calls.push({href,method:options.method||'GET',authorization:options.headers?.Authorization||''});
   if(href.includes('courtiergrowth.com'))return {ok:data.https>=200&&data.https<300,status:data.https,json:async()=>({})};
-  const body=href.includes('/phone-system/')?data.numbers
-   :href.includes('conversationChannels/SMS')?data.sms
+  if(href.includes('/phone-system/')){
+   const status=data.numberStatus||200;
+   return {ok:status>=200&&status<300,status,json:async()=>status===200?data.numbers:{message:data.numberMessage||''}};
+  }
+  const body=href.includes('conversationChannels/SMS')?data.sms
    :href.includes('conversationChannels/Email')?data.email
    :href.includes('/social-media-posting/')?data.social
    :href.includes('/calendars/')?data.calendars
@@ -258,4 +262,106 @@ test('runChecks masque le numéro et ignore un jeton d’un autre sous-compte',a
  assert.equal(JSON.stringify(report).includes(TOKEN),false);
  assert.equal(JSON.stringify(report).includes('autre-jeton'),false);
  assert.equal(calls.every(item=>!item.authorization.includes('autre-jeton')),true);
+});
+
+test('les workflows publiés hors liste bloquent l’étape 2 et s’affichent à l’agence',async()=>{
+ assert.equal(workflowMayStayPublished('Reply STOP'),true);
+ assert.equal(workflowMayStayPublished('1.0. - Rappel + confirmation des RDV'),true);
+ assert.equal(workflowMayStayPublished('1.0 Listing actif Jour 7'),false);
+ assert.equal(workflowMayStayPublished('2.0 Visites Jour 7'),false);
+ assert.equal(workflowMayStayPublished('Outbound Call - Custom Disposition - Book un Call'),false);
+ assert.equal(workflowMayStayPublished('2.0 - Anciens clients fideliser'),false);
+ const classified=classifyPublishedWorkflows([
+  {name:'New lead SMS',status:'draft'},
+  {name:'Reply STOP',status:'published'},
+  {name:'1.0 Listing actif Jour 7',status:'published'},
+  {name:'2.0 Visites Jour 7',status:'published'},
+  {name:'Outbound Call - Custom Disposition - Book un Call',status:'published'},
+  {name:'Anciens clients fideliser acheteur',status:'published'},
+  {name:'Déclencheur retiré',status:'unpublished'}
+ ]);
+ assert.deepEqual(classified.map(item=>item.name),['Reply STOP','1.0 Listing actif Jour 7','2.0 Visites Jour 7','Outbound Call - Custom Disposition - Book un Call','Anciens clients fideliser acheteur']);
+ assert.equal(classified.find(item=>item.name==='Reply STOP').blocks,false);
+ assert.equal(classified.filter(item=>item.blocks).length,4);
+ const ctx=harness();
+ const data=fixture();
+ data.workflows={workflows:[
+  {name:'Reply STOP',status:'published'},
+  {name:'1.0 Listing actif Jour 7',status:'published'},
+  {name:'2.0 Visites Jour 7',status:'published'},
+  {name:'Outbound Call - Custom Disposition - Book un Call',status:'published'},
+  {name:'2.0 - Anciens clients fideliser',status:'published'},
+  {name:'New lead SMS',status:'draft'}
+ ]};
+ const {fetchImpl}=mockFetch(data);
+ const checked=await call(ctx,'POST',{env:{GHL_PILOT_LOCATION_TOKEN:TOKEN},body:{action:'verifier',location_id:PILOT},fetchImpl});
+ assert.equal(checked.body.steps[1].status,'a_faire');
+ assert.match(checked.body.steps[1].detail,/brouillon/);
+ assert.match(checked.body.steps[1].detail,/Listing actif/);
+ const names=checked.body.steps[1].publishedWorkflows.map(item=>item.name);
+ assert.ok(names.includes('1.0 Listing actif Jour 7'));
+ assert.ok(names.includes('Reply STOP'));
+ assert.equal(checked.body.steps[1].publishedWorkflows.find(item=>item.name==='Reply STOP').blocks,false);
+ const agency=await call(ctx,'GET',{headers:{authorization:'Bearer admin-test'},query:{vue:'agence'}});
+ const prep=agency.body.locations[0].steps.find(step=>step.id===2);
+ assert.ok(prep.publishedWorkflows.some(item=>item.name==='2.0 Visites Jour 7'&&item.blocks));
+ assert.ok(prep.publishedWorkflows.some(item=>item.name==='Outbound Call - Custom Disposition - Book un Call'&&item.blocks));
+ assert.ok(prep.publishedWorkflows.some(item=>item.name==='2.0 - Anciens clients fideliser'&&item.blocks));
+ const ui=await fs.readFile(new URL('../public/demarrer-ici/app.js',import.meta.url),'utf8');
+ assert.match(ui,/Workflows publiés/);
+});
+
+test('sans téléphonie, l’étape 3 reste à faire avec le message prévu',async()=>{
+ const env={GHL_PILOT_LOCATION_TOKEN:TOKEN};
+ const missing=fixture();
+ missing.numberStatus=404;
+ missing.numberMessage='No Twilio account found for location';
+ const twilio=await runChecks(PILOT,{env,fetchImpl:mockFetch(missing).fetchImpl});
+ const absent=twilio.results.find(item=>item.step===3);
+ assert.equal(absent.outcome,'a_faire');
+ assert.equal(absent.detail,'Aucun numéro / téléphonie pas encore configurée');
+ const empty=fixture();
+ empty.numbers={numbers:[]};
+ const none=await runChecks(PILOT,{env,fetchImpl:mockFetch(empty).fetchImpl});
+ assert.equal(none.results.find(item=>item.step===3).detail,'Aucun numéro / téléphonie pas encore configurée');
+ const down=fixture();
+ down.numberStatus=502;
+ down.numberMessage='Bad gateway';
+ const failed=await runChecks(PILOT,{env,fetchImpl:mockFetch(down).fetchImpl});
+ const error=failed.results.find(item=>item.step===3);
+ assert.equal(error.outcome,'manuel');
+ assert.match(error.detail,/Lecture impossible pour le moment/);
+ assert.equal(error.detail.includes('Aucun numéro'),false);
+ const ctx=harness();
+ await call(ctx,'POST',{body:{action:'signaler',location_id:PILOT,step:3}});
+ const cleared=await call(ctx,'POST',{env,body:{action:'verifier',location_id:PILOT},fetchImpl:mockFetch(empty).fetchImpl});
+ assert.equal(cleared.body.steps[2].status,'a_faire');
+ assert.equal(cleared.body.steps[2].detail,'Aucun numéro / téléphonie pas encore configurée');
+});
+
+test('l’aide suit l’étape affichée, le fuseau a un défaut, l’agence efface la progression',async()=>{
+ const view=publicView(emptyProgress(PILOT,'2026-11-02T16:00:00Z'));
+ assert.equal(view.steps.every(step=>step.signaler==='J’ai terminé cette étape'),true);
+ assert.equal(view.steps[0].fields.find(field=>field.name==='secteur').label,'Type de propriétés');
+ assert.equal(view.steps[0].fields.find(field=>field.name==='territoire').label,'Secteur (villes ou région)');
+ assert.equal(view.steps[0].fields.find(field=>field.name==='fuseau').options[0][1],'Heure de l’Est (Québec)');
+ const ctx=harness();
+ const saved=await call(ctx,'POST',{body:{action:'enregistrer',location_id:PILOT,broker:{...broker,fuseau:''}}});
+ assert.equal(saved.statusCode,200);
+ assert.equal(saved.body.broker.fuseau,'America/Toronto');
+ assert.equal(saved.body.broker.territoire,'Montréal et Rive-Nord');
+ const help=await call(ctx,'POST',{body:{action:'aide',location_id:PILOT,step:5,note:'Google ne s’ouvre pas.'}});
+ assert.equal(help.body.help.stepId,5);
+ assert.equal(help.body.steps[4].status,'besoin_aide');
+ const denied=await call(ctx,'POST',{body:{action:'reinitialiser',location_id:PILOT}});
+ assert.equal(denied.statusCode,401);
+ const reset=await call(ctx,'POST',{headers:{authorization:'Bearer admin-test'},body:{action:'reinitialiser',location_id:PILOT}});
+ assert.equal(reset.statusCode,200);
+ assert.equal(reset.body.location.broker.nom,undefined);
+ assert.equal(reset.body.location.steps[0].status,'a_faire');
+ assert.equal(reset.body.location.steps[4].status,'a_faire');
+ const ui=await fs.readFile(new URL('../public/demarrer-ici/app.js',import.meta.url),'utf8');
+ assert.match(ui,/L’aide porte sur l’étape affichée/);
+ assert.match(ui,/Aucun courriel ni texto/);
+ assert.match(ui,/Effacer la progression/);
 });

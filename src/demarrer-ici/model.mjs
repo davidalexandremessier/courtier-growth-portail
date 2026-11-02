@@ -26,7 +26,7 @@ export const SECTEURS=[
  ['autre','Autre']
 ];
 export const FUSEAUX=[
- ['America/Toronto','Heure de l’Est (Montréal, Québec)'],
+ ['America/Toronto','Heure de l’Est (Québec)'],
  ['America/Halifax','Heure de l’Atlantique'],
  ['America/Winnipeg','Heure du Centre'],
  ['America/Edmonton','Heure des Rocheuses'],
@@ -62,56 +62,59 @@ export function ghlLink(locationId,path){
 }
 
 function lien(label,path){return {kind:'lien',label,path}}
+const TERMINE='J’ai terminé cette étape';
 
 export const STEPS=[
  {
   id:1,
   title:'Infos du courtier',
-  summary:'Votre nom, votre courriel, votre téléphone personnel, votre entreprise, votre secteur et votre fuseau horaire. Aucun mot de passe n’est demandé.',
+  summary:'Votre nom, votre courriel, votre téléphone personnel, votre entreprise, le type de propriétés, votre secteur (villes ou région) et votre fuseau horaire. Aucun mot de passe n’est demandé.',
   fields:[
    {name:'nom',label:'Nom',type:'text',autocomplete:'name'},
    {name:'courriel',label:'Courriel',type:'email',autocomplete:'email'},
    {name:'telephone',label:'Téléphone personnel',type:'tel',autocomplete:'tel'},
    {name:'entreprise',label:'Entreprise',type:'text',autocomplete:'organization'},
-   {name:'secteur',label:'Secteur',type:'select',options:SECTEURS},
+   {name:'secteur',label:'Type de propriétés',type:'select',options:SECTEURS},
+   {name:'territoire',label:'Secteur (villes ou région)',type:'text',autocomplete:'address-level2'},
    {name:'fuseau',label:'Fuseau horaire',type:'select',options:FUSEAUX}
   ],
-  actions:[{kind:'formulaire',label:'Enregistrer mes informations'}]
+  actions:[{kind:'formulaire',label:'Enregistrer mes informations'}],
+  signaler:TERMINE
  },
  {
   id:2,
   title:'Préparation du compte',
   summary:'L’agence charge le bon modèle : pipelines, formulaires, calendriers et séquences, sans doublons. Les automatisations de prospection restent inactives jusqu’à la validation finale. Vous pouvez les consulter, sans les activer.',
   actions:[lien('Voir les automatisations',GHL.workflows)],
-  signaler:'Demander la vérification'
+  signaler:TERMINE
  },
  {
   id:3,
   title:'Numéro canadien',
   summary:'La page Numéros affiche les frais avant tout achat. S’il faut une vérification d’identité, elle se fait dans GoHighLevel, pas ici. Ce parcours n’achète aucun numéro et n’envoie aucun message. L’indicatif vérifié et l’identité (A2P ou Persona) restent confirmés par l’agence.',
   actions:[lien('Ouvrir les numéros',GHL.phone)],
-  signaler:'J’ai terminé de mon côté'
+  signaler:TERMINE
  },
  {
   id:4,
   title:'Facebook et Instagram',
   summary:'La connexion de la page Facebook et d’Instagram, s’il y a lieu, se fait dans Intégrations. Le compte publicitaire et le Business Portfolio se règlent dans Meta, à l’extérieur de GoHighLevel. Le mapping des formulaires de leads n’est pas lisible par l’API.',
   actions:[lien('Ouvrir les intégrations',GHL.integrations)],
-  signaler:'J’ai connecté mes comptes'
+  signaler:TERMINE
  },
  {
   id:5,
   title:'Google Agenda',
   summary:'Autorisez Google Agenda depuis les calendriers (onglet Connexions), choisissez le bon agenda, puis vérifiez les disponibilités et les conflits. La connexion Google elle-même n’est pas lisible par l’API : l’agence la confirme.',
   actions:[lien('Ouvrir les calendriers',GHL.calendars)],
-  signaler:'J’ai autorisé Google Agenda'
+  signaler:TERMINE
  },
  {
   id:6,
   title:'Sous-domaine du funnel',
   summary:'Le DNS de nomcourtier.courtiergrowth.com est fait par l’agence. On ne vous demande pas de le configurer. Le domaine du funnel et le domaine d’envoi des courriels sont deux choses différentes.',
   actions:[lien('Ouvrir les domaines',GHL.domain)],
-  signaler:'Demander la vérification du domaine'
+  signaler:TERMINE
  },
  {
   id:7,
@@ -120,7 +123,7 @@ export const STEPS=[
   summary:'Étape facultative : elle ne bloque pas le lancement. L’import CSV natif montre le mapping et les doublons avant d’écrire. Aucun envoi de masse n’est lancé. Classez ensuite anciens acheteurs, anciens vendeurs, prospects et réseau.',
   consignes:'Le bouton ouvre la page d’import des contacts dans votre compte. Le classement et l’absence d’envoi se confirment avec l’agence.',
   actions:[lien('Ouvrir l’import des contacts',GHL.import)],
-  signaler:'J’ai importé ma liste',
+  signaler:TERMINE,
   decliner:'Cette étape ne me concerne pas'
  },
  {
@@ -132,13 +135,14 @@ export const STEPS=[
    {kind:'lien',label:'App Store',href:APPLE},
    {kind:'lien',label:'Google Play',href:PLAY}
   ],
-  signaler:'J’ai installé l’application'
+  signaler:TERMINE
  },
  {
   id:9,
   title:'Validation finale',
   summary:'L’agence vérifie le chemin formulaire, contact, opportunité et suivi, une réservation, puis les communications. Le statut Validé n’est jamais posé parce que vous avez cliqué.',
-  actions:[{kind:'demande',label:'Demander la validation'}]
+  actions:[],
+  signaler:TERMINE
  }
 ];
 
@@ -186,16 +190,18 @@ export function parseBroker(input){
  const telephone=normalizePhone(input.telephone);
  const entreprise=clean(input.entreprise,120);
  const secteur=String(input.secteur||'');
- const fuseau=String(input.fuseau||'');
+ const territoire=clean(input.territoire,120);
+ const fuseau=String(input.fuseau||'America/Toronto');
  const errors={};
  if(nom.length<2)errors.nom='Indiquez votre nom.';
  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(courriel))errors.courriel='Indiquez un courriel valide.';
  if(!telephone)errors.telephone='Indiquez un numéro canadien à 10 chiffres.';
  if(entreprise.length<2)errors.entreprise='Indiquez le nom de l’entreprise.';
- if(!SECTEURS.some(([value])=>value===secteur))errors.secteur='Choisissez un secteur.';
+ if(!SECTEURS.some(([value])=>value===secteur))errors.secteur='Choisissez un type de propriétés.';
+ if(territoire.length<2)errors.territoire='Indiquez votre secteur : villes ou région.';
  if(!FUSEAUX.some(([value])=>value===fuseau))errors.fuseau='Choisissez un fuseau horaire.';
  if(Object.keys(errors).length)return {errors};
- return {value:{nom,courriel,telephone,entreprise,secteur,fuseau}};
+ return {value:{nom,courriel,telephone,entreprise,secteur,territoire,fuseau}};
 }
 
 function clean(value,max){return String(value||'').replace(/\s+/g,' ').trim().slice(0,max)}
@@ -220,7 +226,7 @@ export function applyBroker(state,input,now){
 
 export function applySignal(state,stepId,now){
  const step=stepById(stepId);
- if(!step||step.id===1||(!step.signaler&&step.id!==9))return {error:'Cette étape ne se confirme pas par un clic.'};
+ if(!step?.signaler)return {error:'Cette étape ne se confirme pas par un clic.'};
  if(step.id===9){
   const block=blockingStep(state);
   if(block&&block.id!==9)return {error:'L’étape qui bloque : '+block.title+'.',blockingId:block.id};
@@ -246,10 +252,10 @@ export function applyDecline(state,stepId,now){
  return {state:touch(next,now)};
 }
 
-export function applyHelp(state,note,now){
+export function applyHelp(state,note,now,stepId){
  const text=clean(note,500);
  if(text.length<3)return {error:'Décrivez le blocage en quelques mots.'};
- const block=blockingStep(state)||stepById(9);
+ const block=stepById(stepId)||blockingStep(state)||stepById(9);
  const next=clone(state);
  const current=next.steps[String(block.id)];
  next.steps[String(block.id)]={...current,status:'besoin_aide',source:'client',detail:text,updatedAt:now};
@@ -269,6 +275,7 @@ export function applyAgency(state,{stepId,status,note},now){
   status,
   source:'agence',
   detail:text||(status==='valide'?'Confirmé par l’agence.':current.detail||''),
+  ...(Array.isArray(current.publishedWorkflows)?{publishedWorkflows:current.publishedWorkflows}:{}),
   updatedAt:now
  };
  return {state:touch(next,now)};
@@ -285,18 +292,28 @@ export function applyChecks(state,results,now){
   const current=next.steps[key];
   if(!current||!stepById(result.step)||locked(current))continue;
   const detail=clean(result.detail,400);
+  const base={detail,updatedAt:now};
+  if(Array.isArray(result.publishedWorkflows))base.publishedWorkflows=result.publishedWorkflows.slice(0,40);
+  else if(Array.isArray(current.publishedWorkflows))base.publishedWorkflows=current.publishedWorkflows;
   if(result.outcome==='reussi'){
-   next.steps[key]={status:'valide',source:'auto',detail,updatedAt:now};
+   next.steps[key]={...base,status:'valide',source:'auto'};
   }else if(result.outcome==='partiel'){
-   next.steps[key]={status:'en_attente',source:'auto',detail,updatedAt:now};
+   next.steps[key]={...base,status:'en_attente',source:'auto'};
+  }else if(result.outcome==='a_faire'){
+   next.steps[key]={...base,status:'a_faire',source:'auto'};
   }else if(current.status==='valide'&&current.source==='auto'&&(result.outcome==='echoue'||result.outcome==='manuel')){
-   next.steps[key]={status:'a_faire',source:'auto',detail,updatedAt:now};
-  }else if(detail){
-   next.steps[key]={...current,detail,updatedAt:now};
+   next.steps[key]={...base,status:'a_faire',source:'auto'};
+  }else if(detail||base.publishedWorkflows){
+   next.steps[key]={...current,...base};
   }
  }
  next.lastCheckAt=now;
  return touch(next,now);
+}
+
+function publicWorkflows(list){
+ if(!Array.isArray(list))return [];
+ return list.slice(0,40).map(item=>({name:String(item?.name||'').slice(0,120),blocks:item?.blocks===true})).filter(item=>item.name);
 }
 
 function actionView(action,locationId){
@@ -333,13 +350,14 @@ export function publicView(state,{checks='manuel',storage='memoire'}={}){
     optional:!!step.optional,
     fields:step.fields||[],
     actions:step.actions.map(action=>actionView(action,state.locationId)),
-    signaler:step.signaler||(step.id===9?'Demander la validation':''),
+    signaler:step.signaler||'',
     decliner:step.decliner||'',
     status:saved.status,
     statusLabel:STATUSES[saved.status]||STATUSES.a_faire,
     chip:STATUS_CHIP[saved.status]||'neutral',
     source:saved.source==='agence'?'agence':saved.source==='auto'?'auto':null,
-    detail:saved.detail||''
+    detail:saved.detail||'',
+    publishedWorkflows:publicWorkflows(saved.publishedWorkflows)
    };
   })
  };
@@ -352,13 +370,13 @@ export function agencyRow(state){
  const nextLabel=next?.actions?.[0]?.label||next?.signaler||'Rien à faire';
  return {
   locationId:state.locationId,
-  broker:state.broker?.nom?{nom:state.broker.nom,entreprise:state.broker.entreprise,courriel:state.broker.courriel,telephone:state.broker.telephone,secteur:state.broker.secteur,fuseau:state.broker.fuseau}:{},
+  broker:state.broker?.nom?{nom:state.broker.nom,entreprise:state.broker.entreprise,courriel:state.broker.courriel,telephone:state.broker.telephone,secteur:state.broker.secteur,territoire:state.broker.territoire,fuseau:state.broker.fuseau}:{},
   progress:view.progress,
   blocking:view.blocking,
   nextAction:block?nextLabel:'Parcours vérifié',
   help:state.help,
   lastCheckAt:state.lastCheckAt,
   updatedAt:state.updatedAt,
-  steps:view.steps.map(step=>({id:step.id,title:step.title,optional:step.optional,status:step.status,statusLabel:step.statusLabel,detail:step.detail,source:step.source}))
+  steps:view.steps.map(step=>({id:step.id,title:step.title,optional:step.optional,status:step.status,statusLabel:step.statusLabel,detail:step.detail,source:step.source,publishedWorkflows:step.publishedWorkflows}))
  };
 }

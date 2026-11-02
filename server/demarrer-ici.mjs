@@ -127,6 +127,7 @@ export async function handleDemarrerIci(req,res,deps={}){
   if(req.method!=='POST')return res.status(405).json({error:'Méthode non permise.'});
   const action=req.body?.action;
   if(action==='agence')return await agencyUpdate(req,res,{store,adminAuth,env,now});
+  if(action==='reinitialiser')return await agencyReset(req,res,{store,adminAuth,now});
   return await clientPost(req,res,{store,env,now,checks,limits,fetchImpl});
  }catch(error){
   const status=error.status||500;
@@ -156,7 +157,7 @@ async function clientPost(req,res,{store,env,now,checks,limits,fetchImpl}){
  if(action==='enregistrer')result=applyBroker(loaded.row,req.body?.broker,now);
  else if(action==='signaler')result=applySignal(loaded.row,req.body?.step,now);
  else if(action==='ne_sapplique_pas')result=applyDecline(loaded.row,req.body?.step,now);
- else if(action==='aide')result=applyHelp(loaded.row,req.body?.note,now);
+ else if(action==='aide')result=applyHelp(loaded.row,req.body?.note,now,req.body?.step);
  else {
   const report=await checks(locationId,{env,fetchImpl});
   result={state:applyChecks(loaded.row,report.results,now)};
@@ -192,6 +193,18 @@ function normalize(found,locationId,now){
   if(row.steps[key]&&value&&typeof value.status==='string')row.steps[key]={...row.steps[key],...value};
  }
  return row;
+}
+
+async function agencyReset(req,res,{store,adminAuth,now}){
+ await adminAuth(req);
+ const locationId=locationFrom(req);
+ if(!allowedLocation(locationId))return res.status(404).json({error:'Ce parcours n’est pas disponible pour ce compte.'});
+ if(!store)throw new CallError('La progression n’est pas encore enregistrée.',503);
+ const loaded=await loadRow(store,locationId,now);
+ if(loaded.storage==='indisponible')throw new CallError('La progression n’est pas encore enregistrée : la migration du pilote n’est pas appliquée.',503);
+ const fresh=emptyProgress(locationId,now);
+ await store.put(fresh);
+ return res.status(200).json({location:agencyRow(fresh),storage:loaded.storage});
 }
 
 async function agencyUpdate(req,res,{store,adminAuth,env,now}){
