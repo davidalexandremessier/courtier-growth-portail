@@ -38,9 +38,11 @@ export const config={maxDuration:300};
 // Le catch-all correspond avant les rewrites de vercel.json : ces deux
 // adresses publiques doivent donc être reconnues ici. Le handler OAuth
 // distingue encore le chemin d’origine et le paramètre route.
-// Sur Vercel, api/[...slug] ne correspond qu’à un seul segment. La réécriture
-// /api/:tête/:reste envoie le chemin complet dans cg_path, sans toucher aux
-// routes à un seul segment, aux cron ni aux réécritures OAuth.
+// Sur Vercel, un catch-all api/[...slug] revendique les chemins imbriqués
+// puis répond 404 avant les réécritures. Cette fonction ne correspond donc
+// qu’à un segment. La réécriture /api/:tête/:reste y renvoie le chemin
+// complet dans cg_path, sans toucher aux routes à un seul segment, au cron
+// ni aux réécritures OAuth.
 const aliases={'agency-oauth':'oauth','wispr-client-metadata':'oauth'};
 
 function decodePart(part){

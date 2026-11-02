@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {assertServerlessBudget,listServerlessFunctions,SERVERLESS_FUNCTION_LIMIT} from '../scripts/serverless-budget.mjs';
-import dispatch,{config as functionConfig} from '../api/[...slug].js';
+import dispatch,{config as functionConfig} from '../api/[slug].js';
 import {config as statsConfig} from '../routes/stats.js';
 import {config as backgroundConfig} from '../routes/stats-background.js';
 import {config as zoomConfig} from '../routes/zoom-archive.js';
@@ -17,7 +17,7 @@ function response(){return {headers:{},setHeader(k,v){this.headers[k]=v},status(
 test('une seule fonction /api, sous le plafond de 10',async()=>{
  assert.equal(SERVERLESS_FUNCTION_LIMIT,10);
  const files=await assertServerlessBudget();
- assert.deepEqual(files,['api/[...slug].js']);
+ assert.deepEqual(files,['api/[slug].js']);
  assert.equal(functionConfig.maxDuration,300);
  assert.equal(statsConfig.maxDuration,300);
  assert.equal(backgroundConfig.maxDuration,300);
@@ -32,15 +32,7 @@ test('réécritures OAuth et cron Zoom inchangés, chemins /api imbriqués réé
   {source:'/api/agency-oauth',destination:'/api/oauth?route=agency'},
   {source:'/api/wispr-client-metadata',destination:'/api/oauth?route=wispr-metadata'}
  ]);
- assert.equal(vercel.rewrites.length,3);
- const nested=vercel.rewrites[2];
- assert.equal(nested.destination,'/api/$1?cg_path=$1/$2');
- assert.equal(new RegExp(nested.source).test('/api/ghl-webhook/buyer-cockpit'),true);
- assert.equal(new RegExp(nested.source).test('/api/bot-clients/x'),true);
- assert.equal(new RegExp(nested.source).test('/api/ghl-webhook'),false);
- assert.equal(new RegExp(nested.source).test('/api/zoom-archive'),false);
- assert.equal(new RegExp(nested.source).test('/api/agency-oauth'),false);
- assert.equal(new RegExp(nested.source).test('/api/bot-clients'),false);
+ assert.deepEqual(vercel.rewrites[2],{source:'/api/:head/:tail*',destination:'/api/:head?cg_path=:head/:tail*'});
 });
 
 test('une réécriture Vercel à un segment porte encore le chemin complet',async()=>{
