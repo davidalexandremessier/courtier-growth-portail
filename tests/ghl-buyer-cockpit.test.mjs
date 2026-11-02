@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {JSDOM} from 'jsdom';
 import {PGlite} from '@electric-sql/pglite';
-import dispatch from '../api/[...slug].js';
+import dispatch from '../api/[slug].js';
 import {assertServerlessBudget} from '../scripts/serverless-budget.mjs';
 import {handleBuyerWebhook, resetBuyerRateLimit, hashBuyerToken, signBuyerToken, eventIdentity, validateBuyerEvent, LOCATION_LIMIT, MAX_BODY} from '../server/ghl-buyer-webhook.mjs';
 import {buyerActivity, dossierBuyersHtml, publicBuyerHtml, v2BuyersHtml} from '../src/buyer-cockpit.mjs';
@@ -242,7 +242,7 @@ test('navigation : ?page=acheteurs est dans le menu du dossier',()=>{
 
 test('une seule fonction, le chemin imbriqué est délégué, les autres restent 404',async()=>{
  const files=await assertServerlessBudget();
- assert.deepEqual(files,['api/[...slug].js']);
+ assert.deepEqual(files,['api/[slug].js']);
  const restore=env({GHL_BUYER_WEBHOOK_TOKEN:undefined});
  try{
   const hit=response();

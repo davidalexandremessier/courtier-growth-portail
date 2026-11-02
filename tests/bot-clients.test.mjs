@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import handler from '../routes/bot-clients.js';
-import dispatch from '../api/[...slug].js';
+import dispatch from '../api/[slug].js';
 
 const token='test-bot-token';
 const other='test-other-token';

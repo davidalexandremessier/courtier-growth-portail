@@ -38,16 +38,37 @@ export const config={maxDuration:300};
 // Le catch-all correspond avant les rewrites de vercel.json : ces deux
 // adresses publiques doivent donc être reconnues ici. Le handler OAuth
 // distingue encore le chemin d’origine et le paramètre route.
+// Sur Vercel, un catch-all api/[...slug] revendique les chemins imbriqués
+// puis répond 404 avant les réécritures. Cette fonction ne correspond donc
+// qu’à un segment. La réécriture /api/:tête/:reste y renvoie le chemin
+// complet dans cg_path, sans toucher aux routes à un seul segment, au cron
+// ni aux réécritures OAuth.
 const aliases={'agency-oauth':'oauth','wispr-client-metadata':'oauth'};
 
+function decodePart(part){
+ try{return decodeURIComponent(part)}catch{return part}
+}
+function pathParts(value){
+ return String(value||'').split('/').filter(Boolean).map(decodePart);
+}
 function segments(req){
  const slug=req.query?.slug;
- if(Array.isArray(slug))return slug.map(String);
- if(typeof slug==='string'&&slug)return [slug];
+ const fromSlug=Array.isArray(slug)?slug.map(String):typeof slug==='string'&&slug?[slug]:[];
+ if(fromSlug.length>1)return fromSlug;
+ const hinted=req.query?.cg_path;
+ const hint=typeof hinted==='string'?hinted:Array.isArray(hinted)?hinted[0]:'';
+ if(typeof hint==='string'&&hint.includes('/')){
+  const fromHint=pathParts(hint);
+  if(fromHint.length>1&&(!fromSlug.length||fromHint[0]===fromSlug[0]))return fromHint;
+ }
  let pathname='/';
- try{pathname=new URL(req.url||'/','https://portal.invalid').pathname}catch{return []}
- if(!pathname.startsWith('/api/'))return [];
- return pathname.slice('/api/'.length).split('/').filter(Boolean).map(part=>{try{return decodeURIComponent(part)}catch{return part}});
+ try{pathname=new URL(req.url||'/','https://portal.invalid').pathname}catch{pathname='/'}
+ if(pathname.startsWith('/api/')){
+  const fromUrl=pathParts(pathname.slice('/api/'.length));
+  if(fromUrl.length>1)return fromUrl;
+  if(!fromSlug.length)return fromUrl;
+ }
+ return fromSlug;
 }
 
 function routeFor(parts){

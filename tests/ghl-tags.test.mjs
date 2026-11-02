@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-import dispatch from '../api/[...slug].js';
+import dispatch from '../api/[slug].js';
 import handler from '../routes/ghl-tags.js';
 import {GHL_LOCATION_ID,GHL_TAG_ACTIONS,acceptOfferedSpot,applyClientTag,taggingEnabled} from '../server/ghl-tags.mjs';
 

@@ -158,14 +158,14 @@ test('l’assistant du portail v2 est sur les pages client Sprint 97 $, sans nou
  assert.match(src,/sprint97Cards\(/);
  assert.equal(/\b(mailto:|twilio|sendgrid|nodemailer|service_role)\b/i.test(src),false);
  const api=await fs.readdir(new URL('../api',import.meta.url));
- assert.deepEqual(api,['[...slug].js']);
+ assert.deepEqual(api,['[slug].js']);
 });
 
 test('le module ne déclenche aucun envoi',async()=>{
  const src=await fs.readFile(new URL('../src/sprint97-portal.mjs',import.meta.url),'utf8');
  assert.equal(/\bfetch\s*\(|mailto:|twilio|sendgrid|nodemailer|service_role|SUPABASE_ARCHIVE/i.test(src),false);
  const api=await fs.readdir(new URL('../api',import.meta.url));
- assert.deepEqual(api,['[...slug].js']);
+ assert.deepEqual(api,['[slug].js']);
 });
 
 test('RLS : le client voit ses lignes, l’admin voit tout, pas d’écriture croisée',async()=>{
