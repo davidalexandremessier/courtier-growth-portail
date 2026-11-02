@@ -25,13 +25,52 @@ test('une seule fonction /api, sous le plafond de 10',async()=>{
  assert.equal(workerConfig.maxDuration,60);
 });
 
-test('réécritures publiques et cron Zoom inchangés',async()=>{
+test('réécritures OAuth et cron Zoom inchangés, chemins /api imbriqués réécrits',async()=>{
  const vercel=JSON.parse(await fs.readFile(new URL('../vercel.json',import.meta.url),'utf8'));
  assert.deepEqual(vercel.crons,[{path:'/api/zoom-archive',schedule:'0 9 * * *'}]);
- assert.deepEqual(vercel.rewrites,[
+ assert.deepEqual(vercel.rewrites.slice(0,2),[
   {source:'/api/agency-oauth',destination:'/api/oauth?route=agency'},
   {source:'/api/wispr-client-metadata',destination:'/api/oauth?route=wispr-metadata'}
  ]);
+ assert.equal(vercel.rewrites.length,3);
+ const nested=vercel.rewrites[2];
+ assert.equal(nested.destination,'/api/$1?cg_path=$1/$2');
+ assert.equal(new RegExp(nested.source).test('/api/ghl-webhook/buyer-cockpit'),true);
+ assert.equal(new RegExp(nested.source).test('/api/bot-clients/x'),true);
+ assert.equal(new RegExp(nested.source).test('/api/ghl-webhook'),false);
+ assert.equal(new RegExp(nested.source).test('/api/zoom-archive'),false);
+ assert.equal(new RegExp(nested.source).test('/api/agency-oauth'),false);
+ assert.equal(new RegExp(nested.source).test('/api/bot-clients'),false);
+});
+
+test('une réécriture Vercel à un segment porte encore le chemin complet',async()=>{
+ const prev=Object.fromEntries(['GHL_BUYER_WEBHOOK_TOKEN','GHL_BUYER_PORTAL_SECRET','APP_URL','SUPABASE_URL','SUPABASE_ARCHIVE_SECRET_KEY'].map(key=>[key,process.env[key]]));
+ process.env.GHL_BUYER_WEBHOOK_TOKEN='webhook-token-test-value';
+ process.env.GHL_BUYER_PORTAL_SECRET='portal-secret-test-value';
+ process.env.APP_URL='https://portail.example.test';
+ process.env.SUPABASE_URL='https://db.example.test';
+ process.env.SUPABASE_ARCHIVE_SECRET_KEY='archive-secret-test-value';
+ try{
+  const post=response();
+  await dispatch({method:'POST',url:'/api/ghl-webhook?cg_path=ghl-webhook/buyer-cockpit',headers:{},query:{slug:'ghl-webhook',cg_path:'ghl-webhook/buyer-cockpit'},body:{}},post);
+  assert.equal(post.statusCode,401);
+  assert.deepEqual(post.body,{error:'Jeton webhook refusé.'});
+  assert.match(post.headers['Content-Type'],/application\/json/);
+  const read=response();
+  await dispatch({method:'GET',url:'/api/ghl-webhook?cg_path=ghl-webhook/buyer-cockpit',headers:{},query:{slug:'ghl-webhook',cg_path:'ghl-webhook/buyer-cockpit'}},read);
+  assert.equal(read.statusCode,401);
+  assert.deepEqual(read.body,{error:'Lien requis.'});
+  const single=response();
+  await dispatch({method:'POST',url:'/api/ghl-webhook',headers:{},query:{slug:'ghl-webhook'},body:{}},single);
+  assert.equal(single.statusCode,401);
+  assert.deepEqual(single.body,{error:'Jeton webhook refusé.'});
+  const bots=response();
+  await dispatch({method:'GET',url:'/api/bot-clients/x?cg_path=bot-clients/x',headers:{},query:{slug:'bot-clients',cg_path:'bot-clients/x'}},bots);
+  assert.equal(bots.statusCode,404);
+  assert.deepEqual(bots.body,{error:'Introuvable.'});
+ }finally{
+  for(const [key,value] of Object.entries(prev)){if(value===undefined)delete process.env[key];else process.env[key]=value}
+ }
 });
 
 test('le garde échoue au-dessus de 10 fonctions et ignore routes/',async()=>{
