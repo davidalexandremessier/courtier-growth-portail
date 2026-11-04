@@ -227,6 +227,143 @@ test('le catch-all reconnaît bot-clients et garde les autres réponses stables'
  }finally{restore()}
 });
 
+const readToken='test-read-token';
+const writeToken='test-write-token';
+const fullToken='test-full-token';
+const patchBody={changes:{status:'Actif'},reason:'Point hebdomadaire'};
+const bearer=value=>({authorization:'Bearer '+value});
+function keysEnv(keys){return env({BOT_API_KEYS:JSON.stringify(keys),SUPABASE_URL:'https://db.test.invalid',SUPABASE_ARCHIVE_SECRET_KEY:serviceKey})}
+function apiFetch(){
+ return installFetch(call=>{
+  const url=new URL(call.url);
+  if(url.pathname==='/rest/v1/clients'&&call.method==='GET') return {body:[sample]};
+  if(url.pathname==='/rest/v1/bot_audit_log'&&call.method==='POST') return {body:[]};
+  if(url.pathname==='/rest/v1/rpc/bot_update_client'&&call.method==='POST') return {body:{...sample,status:'Actif'}};
+  throw new Error(call.method+' '+url.pathname);
+ });
+}
+
+test('ancien format sans scope : GET et PATCH restent autorisés',async()=>{
+ const restore=keysEnv({alpha:tokenHash,beta:hash(other)});
+ const fetchMock=apiFetch();
+ try{
+  const list=response();
+  await handler(req('GET'),list);
+  assert.equal(list.statusCode,200);
+  assert.equal(list.body.clients.length,1);
+  assert.equal(list.body.clients[0].name,'Client Synthèse');
+  const updated=response();
+  await handler(req('PATCH',{query:{id:clientId},body:patchBody}),updated);
+  assert.equal(updated.statusCode,200);
+  assert.equal(updated.body.client.status,'Actif');
+  const rpc=fetchMock.calls.find(call=>call.url.includes('/rpc/bot_update_client'));
+  assert.equal(rpc.body.p_actor,'alpha');
+  assert.deepEqual(rpc.body.p_patch,{status:'Actif'});
+  noToken(fetchMock.calls);
+  noCors(updated);
+ }finally{fetchMock.restore();restore()}
+});
+
+test('scope read : GET autorisé, PATCH POST PUT DELETE répondent 403',async()=>{
+ const restore=keysEnv({alpha:tokenHash,lecteur:{hash:hash(readToken),scope:'read'}});
+ const fetchMock=apiFetch();
+ try{
+  const list=response();
+  await handler(req('GET',{headers:bearer(readToken)}),list);
+  assert.equal(list.statusCode,200);
+  assert.equal(list.body.clients[0].email,'synthese@example.test');
+  const audit=fetchMock.calls.find(call=>call.url.endsWith('/bot_audit_log'));
+  assert.equal(audit.body.actor,'lecteur');
+  assert.equal(audit.body.action,'list');
+  const before=fetchMock.calls.length;
+  for(const method of ['PATCH','POST','PUT','DELETE']){
+   const res=response();
+   await handler(req(method,{headers:bearer(readToken),query:{id:clientId},body:patchBody}),res);
+   assert.equal(res.statusCode,403,method);
+   assert.deepEqual(res.body,{error:'Jeton en lecture seule : écriture refusée.'});
+   noCors(res);
+  }
+  const malformed=response();
+  await handler(req('PATCH',{headers:bearer(readToken),query:{id:clientId},body:'{'}),malformed);
+  assert.equal(malformed.statusCode,403);
+  assert.equal(fetchMock.calls.length,before);
+  const still=response();
+  await handler(req('PATCH',{query:{id:clientId},body:patchBody}),still);
+  assert.equal(still.statusCode,200);
+  const rpc=fetchMock.calls.find(call=>call.url.includes('/rpc/bot_update_client'));
+  assert.equal(rpc.body.p_actor,'alpha');
+  noToken(fetchMock.calls);
+  assert.equal(JSON.stringify(fetchMock.calls).includes(readToken),false);
+ }finally{fetchMock.restore();restore()}
+});
+
+test('scope write et full : GET et PATCH autorisés',async()=>{
+ const restore=keysEnv({
+  redacteur:{hash:hash(writeToken),scope:'write'},
+  complet:{hash:hash(fullToken).toUpperCase(),scope:'full'},
+  implicite:{hash:hash(token)}
+ });
+ const fetchMock=apiFetch();
+ try{
+  for(const [name,value] of [['redacteur',writeToken],['complet',fullToken],['implicite',token]]){
+   const read=response();
+   await handler(req('GET',{headers:bearer(value)}),read);
+   assert.equal(read.statusCode,200,name);
+   const updated=response();
+   await handler(req('PATCH',{headers:bearer(value),query:{id:clientId},body:patchBody}),updated);
+   assert.equal(updated.statusCode,200,name);
+   assert.equal(updated.body.client.status,'Actif');
+  }
+  const actors=fetchMock.calls.filter(call=>call.url.includes('/rpc/bot_update_client')).map(call=>call.body.p_actor);
+  assert.deepEqual(actors,['redacteur','complet','implicite']);
+  for(const value of [writeToken,fullToken,token]){
+   const post=response();
+   await handler(req('POST',{headers:bearer(value)}),post);
+   assert.equal(post.statusCode,405);
+   assert.deepEqual(post.body,{error:'Méthode non permise.'});
+  }
+  noToken(fetchMock.calls);
+ }finally{fetchMock.restore();restore()}
+});
+
+test('JSON de clés invalide : 503 sans exception ni appel base',async()=>{
+ const cases=[
+  'pas du json',
+  '{',
+  'null',
+  '[]',
+  '{"lecteur":{"hash":"'+tokenHash+'","scope":"admin"}}',
+  '{"lecteur":{"hash":"'+tokenHash+'","scope":"READ"}}',
+  '{"lecteur":{"scope":"read"}}',
+  '{"lecteur":{"hash":"court","scope":"read"}}',
+  '{"lecteur":{"hash":"'+tokenHash+'","scope":"read","droits":"full"}}',
+  '{"lecteur":[]}',
+  '{"lecteur":{"hash":"'+tokenHash+'","scope":null}}',
+  '{"alpha":"'+tokenHash+'","lecteur":{"hash":"'+hash(readToken)+'","scope":"nope"}}'
+ ];
+ for(const value of cases){
+  const restore=env({BOT_API_KEYS:value,SUPABASE_URL:'https://db.test.invalid',SUPABASE_ARCHIVE_SECRET_KEY:serviceKey});
+  const fetchMock=installFetch(()=>{throw new Error('pas d’appel')});
+  try{
+   const res=response();
+   await assert.doesNotReject(()=>handler(req('GET'),res));
+   assert.equal(res.statusCode,503,String(value));
+   assert.deepEqual(res.body,{error:'Configuration serveur indisponible.'});
+   const patch=response();
+   await assert.doesNotReject(()=>handler(req('PATCH',{query:{id:clientId},body:patchBody}),patch));
+   assert.equal(patch.statusCode,503,String(value));
+   assert.equal(fetchMock.calls.length,0);
+  }finally{fetchMock.restore();restore()}
+ }
+ const restore=env({BOT_API_KEYS:'pas du json',SUPABASE_URL:'https://db.test.invalid',SUPABASE_ARCHIVE_SECRET_KEY:serviceKey});
+ try{
+  const post=response();
+  await assert.doesNotReject(()=>handler(req('POST'),post));
+  assert.equal(post.statusCode,405);
+  assert.deepEqual(post.body,{error:'Méthode non permise.'});
+ }finally{restore()}
+});
+
 test('SQL bot_client_access : admins lisent, service_role seul met à jour, champs hors liste refusés',async()=>{
  const db=new PGlite();
  const id='00000000-0000-4000-8000-000000000001';
