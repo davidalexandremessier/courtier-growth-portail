@@ -7,6 +7,8 @@ const WRITABLE=new Set(['status','main_constraint','sector','launch_date','suppo
 const STATUSES=new Set(['Onboarding','Actif','En pause','Terminé']);
 const MODES=new Set(['Solo','Équipe']);
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SCOPES=new Set(['read','write','full']);
+const READ_ONLY_ERROR='Jeton en lecture seule : écriture refusée.';
 
 function fail(res,status,error){return res.status(status).json({error})}
 function header(req,name){
@@ -20,6 +22,17 @@ function hasOrigin(req){
  if(typeof headers.get==='function') return typeof headers.has==='function'?headers.has('origin'):headers.get('origin')!=null;
  return Object.keys(headers).some(key=>key.toLowerCase()==='origin'&&headers[key]!=null);
 }
+function keyEntry(value){
+ let hash=value,scope='full';
+ if(value&&typeof value==='object'){
+  if(Array.isArray(value)||Object.keys(value).some(key=>key!=='hash'&&key!=='scope')) return null;
+  hash=value.hash;
+  if(value.scope!==undefined) scope=value.scope;
+ }
+ if(typeof hash!=='string'||!/^[0-9a-f]{64}$/i.test(hash)) return null;
+ if(typeof scope!=='string'||!SCOPES.has(scope)) return null;
+ return {hash:hash.toLowerCase(),scope};
+}
 function botKeys(){
  const raw=process.env.BOT_API_KEYS;
  if(typeof raw!=='string'||!raw.trim()) return null;
@@ -29,10 +42,11 @@ function botKeys(){
  const entries=Object.entries(parsed);
  if(!entries.length) return null;
  const keys=[];
- for(const [name,hash] of entries){
+ for(const [name,value] of entries){
   if(typeof name!=='string'||!/^[\p{L}\p{N}_.-]{1,64}$/u.test(name)||name==='refus') return null;
-  if(typeof hash!=='string'||!/^[0-9a-f]{64}$/i.test(hash)) return null;
-  keys.push([name,hash.toLowerCase()]);
+  const entry=keyEntry(value);
+  if(!entry) return null;
+  keys.push({name,...entry});
  }
  return keys;
 }
@@ -46,9 +60,9 @@ function presentedToken(req){
 function matchActor(token,keys){
  const actual=Buffer.from(createHash('sha256').update(token).digest('hex'));
  let actor=null;
- for(const [name,hash] of keys){
-  const expected=Buffer.from(hash);
-  if(expected.length===actual.length&&timingSafeEqual(actual,expected)&&actor===null) actor=name;
+ for(const entry of keys){
+  const expected=Buffer.from(entry.hash);
+  if(expected.length===actual.length&&timingSafeEqual(actual,expected)&&actor===null) actor=entry;
  }
  return actor;
 }
@@ -167,20 +181,24 @@ async function patchClient(req,res,db,actor){
 
 // Comparaison par empreinte. Le jeton n’est jamais écrit dans bot_audit_log.
 // clients n’est jamais modifié ici : PATCH appelle seulement rpc bot_update_client.
+// scope absent ou "full" : droits historiques. "write" : GET et PATCH. "read" : GET seul.
 export default async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
  if(hasOrigin(req)) return fail(res,403,'Origine refusée.');
  const method=String(req.method||'').toUpperCase();
- if(method!=='GET'&&method!=='PATCH') return fail(res,405,'Méthode non permise.');
+ const apiMethod=method==='GET'||method==='PATCH';
+ if(!apiMethod&&method!=='POST'&&method!=='PUT'&&method!=='DELETE') return fail(res,405,'Méthode non permise.');
  const keys=botKeys();
+ const presented=keys?presentedToken(req):null;
+ const actor=keys&&presented.token?matchActor(presented.token,keys):null;
+ if(actor?.scope==='read'&&method!=='GET') return fail(res,403,READ_ONLY_ERROR);
+ if(!apiMethod) return fail(res,405,'Méthode non permise.');
  if(!keys) return fail(res,503,'Configuration serveur indisponible.');
- const presented=presentedToken(req);
- const actor=presented.token?matchActor(presented.token,keys):null;
  if(!actor){await auditDenial(presented.presented);return fail(res,401,'Accès refusé.')}
  try{
   const db=serverDb();
   if(!db) return fail(res,503,'Configuration serveur indisponible.');
-  if(method==='GET') return await readClients(req,res,db,actor);
-  return await patchClient(req,res,db,actor);
+  if(method==='GET') return await readClients(req,res,db,actor.name);
+  return await patchClient(req,res,db,actor.name);
  }catch{return fail(res,502,'Service indisponible.')}
 }
